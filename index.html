@@ -1040,27 +1040,55 @@ function render() {
 }
 
 // ── Boot ───────────────────────────────────────
-async function boot() {
-  // Listen for auth state changes
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display  = 'block';
-      await loadData();
-    } else {
-      currentUser = null;
-      document.getElementById('authScreen').style.display = 'block';
-      document.getElementById('appScreen').style.display  = 'none';
-    }
-    document.getElementById('loadingOverlay').style.display = 'none';
-  });
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+function showAuth() {
+  hideLoading();
+  document.getElementById('authScreen').style.display = 'block';
+  document.getElementById('appScreen').style.display  = 'none';
+}
+function showApp() {
+  hideLoading();
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display  = 'block';
+}
 
-  // Check existing session
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    document.getElementById('loadingOverlay').style.display = 'none';
+async function boot() {
+  // Safety net — never stuck loading longer than 5 seconds
+  const timeout = setTimeout(() => {
+    if (document.getElementById('loadingOverlay').style.display !== 'none') {
+      showAuth();
+    }
+  }, 5000);
+
+  try {
+    const { data: { session }, error } = await sb.auth.getSession();
+    clearTimeout(timeout);
+    if (error || !session) {
+      showAuth();
+      return;
+    }
+    currentUser = session.user;
+    showApp();
+    await loadData();
+  } catch (err) {
+    clearTimeout(timeout);
+    showAuth();
   }
+
+  // Listen for future sign in / sign out events
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      currentUser = session.user;
+      showApp();
+      await loadData();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      tasks = []; recurring = [];
+      showAuth();
+    }
+  });
 }
 
 boot();
