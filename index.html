@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Task Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap');
+
+  :root {
+    --bg: #f5f0e8;
+    --surface: #fffdf7;
+    --surface2: #f0ebe0;
+    --border: #d4ccb8;
+    --text: #2a2520;
+    --text-muted: #7a6f60;
+    --accent: #2d5a3d;
+    --accent-light: #e8f2eb;
+    --amber: #b85c00;
+    --red: #8b2020;
+    --blue: #1a3a5c;
+    --confidential: #4a1a6b;
+    --confidential-light: #f3eaf8;
+    --tomorrow: #1a4a4a;
+    --tomorrow-light: #e8f2f2;
+    --recurring: #5c3a00;
+    --recurring-light: #fdf5e8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── Auth screen ── */
+  #authScreen {
+    max-width: 360px;
+    margin: 80px auto;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .auth-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1.5px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .auth-header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  .auth-header p {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .auth-body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+  .auth-field { display: flex; flex-direction: column; gap: 5px; }
+
+  .auth-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+
+  .auth-input {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: white;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  .auth-input:focus { border-color: var(--text); }
+
+  .auth-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 10px;
+    background: var(--text);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .auth-btn:hover { opacity: 0.8; }
+  .auth-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .auth-msg {
+    font-size: 11px;
+    text-align: center;
+    padding: 8px;
+    border-radius: 3px;
+    display: none;
+  }
+
+  .auth-msg.error { background: #fdeaea; color: var(--red); display: block; }
+  .auth-msg.success { background: var(--accent-light); color: var(--accent); display: block; }
+
+  .auth-toggle {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .auth-toggle span { color: var(--blue); text-decoration: underline; cursor: pointer; }
+
+  /* ── Main app ── */
+  #appScreen { display: none; }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--text);
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  .header-date {
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .signout-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: white;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.12s;
+  }
+
+  .signout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* Sync indicator */
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    margin-right: 5px;
+    transition: background 0.3s;
+  }
+
+  .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .sync-label { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; }
+
+  /* Tab nav */
+  .tab-nav {
+    display: flex;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface2);
+    margin-bottom: 16px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 10px 4px;
+    border: none;
+    border-right: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .tab-btn:last-child { border-right: none; }
+  .tab-btn:hover { background: var(--surface); color: var(--text); }
+  .tab-btn.active { background: var(--surface); color: var(--text); }
+  .tab-btn.active.tab-today    { box-shadow: inset 0 -2px 0 var(--blue); }
+  .tab-btn.active.tab-tomorrow { box-shadow: inset 0 -2px 0 var(--tomorrow); }
+  .tab-btn.active.tab-recurring{ box-shadow: inset 0 -2px 0 var(--recurring); }
+  .tab-btn.active.tab-backlog  { box-shadow: inset 0 -2px 0 var(--amber); }
+
+  .tab-pane { display: none; flex-direction: column; gap: 16px; }
+  .tab-pane.active { display: flex; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .left-col { min-width: 0; }
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1.5px solid var(--border);
+    background: var(--surface2);
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-today     { background: var(--blue); }
+  .dot-new       { background: var(--red); }
+  .dot-backlog   { background: var(--amber); }
+  .dot-tomorrow  { background: var(--tomorrow); }
+  .dot-recurring { background: var(--recurring); }
+
+  .section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .section:last-child { border-bottom: none; }
+
+  .task-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+  }
+
+  .task-item:hover { background: var(--surface2); border-color: var(--border); }
+  .task-item.done { opacity: 0.5; }
+  .task-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+  .task-item.confidential { background: var(--confidential-light); border-color: #d4b8e8; }
+  .task-item.confidential:hover { background: #ecdff5; }
+
+  .task-check {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    background: white;
+  }
+
+  .task-check:hover { border-color: var(--accent); }
+  .task-check.checked { background: var(--accent); border-color: var(--accent); }
+  .task-check.checked::after { content: '✓'; color: white; font-size: 10px; line-height: 1; }
+
+  .task-text { font-size: 13px; line-height: 1.4; flex: 1; word-break: break-word; }
+
+  .task-tag {
+    font-size: 9px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 2px 5px; border-radius: 2px;
+    flex-shrink: 0; margin-top: 2px;
+    background: var(--confidential-light); color: var(--confidential); border: 1px solid #c9a8e0;
+  }
+
+  .task-actions { display: flex; gap: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+  .task-item:hover .task-actions { opacity: 1; }
+
+  .task-btn {
+    font-size: 10px; padding: 2px 5px;
+    border: 1px solid var(--border); border-radius: 2px;
+    background: white; cursor: pointer; color: var(--text-muted);
+    font-family: inherit; transition: all 0.12s; white-space: nowrap;
+  }
+
+  .task-btn:hover { border-color: var(--text); color: var(--text); }
+  .task-btn.danger:hover { border-color: var(--red); color: var(--red); }
+  .task-btn.promote:hover { border-color: var(--accent); color: var(--accent); }
+
+  .recurring-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 3px;
+    border: 1px solid #e0cfa0;
+    background: var(--recurring-light);
+  }
+
+  .rec-btn {
+    font-size: 10px; padding: 3px 7px;
+    border: 1.5px solid; border-radius: 2px;
+    background: white; cursor: pointer;
+    font-family: inherit; font-weight: 500;
+    transition: all 0.12s; white-space: nowrap; flex-shrink: 0;
+  }
+
+  .rec-btn.to-today { border-color: var(--blue); color: var(--blue); }
+  .rec-btn.to-today:hover { background: var(--blue); color: white; }
+  .rec-btn.to-tmrw  { border-color: var(--tomorrow); color: var(--tomorrow); }
+  .rec-btn.to-tmrw:hover { background: var(--tomorrow); color: white; }
+  .rec-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+  .add-area { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+
+  .add-input {
+    flex: 1; font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 3px;
+    background: white; color: var(--text); outline: none;
+    transition: border-color 0.15s; min-width: 0;
+  }
+
+  .add-input:focus { border-color: var(--text); }
+  .add-input::placeholder { color: var(--text-muted); }
+
+  .add-btn {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 7px 12px; background: var(--text); color: white;
+    border: none; border-radius: 3px; cursor: pointer;
+    transition: opacity 0.15s; white-space: nowrap;
+  }
+
+  .add-btn:hover { opacity: 0.8; }
+
+  .conf-label {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--text-muted);
+    cursor: pointer; padding: 4px 0; user-select: none; flex-shrink: 0;
+  }
+
+  .conf-label input { cursor: pointer; accent-color: var(--confidential); }
+
+  .post-content { padding: 14px 16px; }
+
+  .post-box {
+    font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.7;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 3px; padding: 12px; min-height: 70px;
+    white-space: pre-wrap; word-break: break-word; color: var(--text);
+    max-height: 200px; overflow-y: auto;
+  }
+
+  .copy-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-top: 10px; font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 8px 14px; background: var(--text); color: white;
+    border: none; border-radius: 3px; cursor: pointer;
+    transition: all 0.15s; width: 100%;
+  }
+
+  .copy-btn:hover { opacity: 0.8; }
+  .copy-btn.copied { background: var(--accent) !important; }
+
+  .start-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-top: 8px; font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 8px 14px; background: var(--tomorrow); color: white;
+    border: none; border-radius: 3px; cursor: pointer;
+    transition: opacity 0.15s; width: 100%;
+  }
+
+  .start-btn:hover { opacity: 0.85; }
+
+  .stats-row { display: flex; padding: 12px 16px; background: var(--surface2); }
+  .stat { flex: 1; text-align: center; }
+
+  .stat-num {
+    font-size: 20px; font-family: 'Fraunces', serif; font-weight: 600;
+    line-height: 1; margin-bottom: 2px;
+  }
+
+  .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+  .c-done { color: var(--accent); }
+  .c-today { color: var(--blue); }
+  .c-tmrw { color: var(--tomorrow); }
+  .c-backlog { color: var(--amber); }
+
+  .empty-state { font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 0; font-style: italic; }
+
+  .notice { font-size: 10px; padding: 8px 10px; border-radius: 3px; line-height: 1.55; margin-top: 10px; }
+  .n-conf { background: var(--confidential-light); color: var(--confidential); border: 1px solid #d4b8e8; }
+  .n-tmrw { background: var(--tomorrow-light); color: var(--tomorrow); border: 1px solid #b0cfcf; }
+  .n-rec  { background: var(--recurring-light); color: var(--recurring); border: 1px solid #d4b870; }
+
+  .header-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .hdr-btn {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    padding: 3px 8px; border: 1px solid var(--border);
+    border-radius: 2px; background: white; cursor: pointer;
+    color: var(--text-muted); transition: all 0.12s; white-space: nowrap;
+  }
+
+  .hdr-btn:hover { border-color: var(--text); color: var(--text); }
+
+  /* Loading overlay */
+  #loadingOverlay {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-size: 18px; color: var(--text-muted);
+    z-index: 100;
+  }
+
+  @media (max-width: 820px) {
+    body { padding: 16px; }
+    .layout { grid-template-columns: 1fr; }
+    .right-col { order: -1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loadingOverlay">Loading…</div>
+
+<!-- Auth screen -->
+<div id="authScreen">
+  <div class="auth-header">
+    <h1>Daily Tasks</h1>
+    <p id="authSubtitle">Sign in to access your tasks</p>
+  </div>
+  <div class="auth-body">
+    <div class="auth-field">
+      <label class="auth-label">Email</label>
+      <input class="auth-input" type="email" id="authEmail" placeholder="you@example.com" onkeydown="if(event.key==='Enter') authAction()">
+    </div>
+    <div class="auth-field">
+      <label class="auth-label">Password</label>
+      <input class="auth-input" type="password" id="authPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter') authAction()">
+    </div>
+    <div class="auth-msg" id="authMsg"></div>
+    <button class="auth-btn" id="authBtn" onclick="authAction()">Sign In</button>
+    <div class="auth-toggle" id="authToggle">
+      No account? <span onclick="toggleAuthMode()">Create one</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main app -->
+<div id="appScreen">
+  <header>
+    <h1>Daily Tasks</h1>
+    <span class="header-date" id="dateDisplay"></span>
+    <span class="sync-label"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Synced</span></span>
+    <button class="signout-btn" onclick="signOut()">Sign out</button>
+  </header>
+
+  <div class="layout">
+    <div class="left-col">
+
+      <div class="tab-nav">
+        <button class="tab-btn tab-today active"    onclick="switchTab('today')">☀️ Today</button>
+        <button class="tab-btn tab-tomorrow"        onclick="switchTab('tomorrow')">⏭️ Tomorrow</button>
+        <button class="tab-btn tab-recurring"       onclick="switchTab('recurring')">🔁 Recurring</button>
+        <button class="tab-btn tab-backlog"         onclick="switchTab('backlog')">📌 Backlog</button>
+      </div>
+
+      <!-- TODAY -->
+      <div class="tab-pane active" id="pane-today">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><span class="dot dot-today"></span>Planned for today</span>
+            <div class="header-btns">
+              <button class="hdr-btn" onclick="switchTab('recurring')">+ From recurring</button>
+              <button class="hdr-btn" onclick="pullFromBacklog('today')">+ From backlog</button>
+            </div>
+          </div>
+          <div class="section">
+            <div class="task-list" id="todayList"></div>
+            <div class="add-area">
+              <input class="add-input" id="todayInput" placeholder="Add a task for today…" onkeydown="if(event.key==='Enter') addTask('today')">
+              <label class="conf-label" title="Confidential"><input type="checkbox" id="todayConf"> 🔒</label>
+              <button class="add-btn" onclick="addTask('today')">+ Add</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><span class="dot dot-new"></span>Added during the day</span>
+          </div>
+          <div class="section">
+            <div class="task-list" id="newList"></div>
+            <div class="add-area">
+              <input class="add-input" id="newInput" placeholder="Something that came up today…" onkeydown="if(event.key==='Enter') addTask('new')">
+              <label class="conf-label" title="Confidential"><input type="checkbox" id="newConf"> 🔒</label>
+              <button class="add-btn" onclick="addTask('new')">+ Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOMORROW -->
+      <div class="tab-pane" id="pane-tomorrow">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><span class="dot dot-tomorrow"></span>Tomorrow's plan (draft)</span>
+            <div class="header-btns">
+              <button class="hdr-btn" onclick="carryForward()">+ Carry forward unfinished</button>
+              <button class="hdr-btn" onclick="pullFromBacklog('tomorrow')">+ From backlog</button>
+            </div>
+          </div>
+          <div class="section">
+            <div class="task-list" id="tomorrowList"></div>
+            <div class="add-area">
+              <input class="add-input" id="tomorrowInput" placeholder="Plan a task for tomorrow…" onkeydown="if(event.key==='Enter') addTask('tomorrow')">
+              <label class="conf-label" title="Confidential"><input type="checkbox" id="tomorrowConf"> 🔒</label>
+              <button class="add-btn" onclick="addTask('tomorrow')">+ Add</button>
+            </div>
+            <div class="notice n-tmrw" style="margin-top:12px;">
+              ⏭️ Completely separate from today. Hit <strong>Start Tomorrow</strong> on the right when your new day begins.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECURRING -->
+      <div class="tab-pane" id="pane-recurring">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><span class="dot dot-recurring"></span>Regular / recurring tasks</span>
+          </div>
+          <div class="section">
+            <div class="task-list" id="recurringList"></div>
+            <div class="add-area" style="margin-top:12px;">
+              <input class="add-input" id="recurringInput" placeholder="Add a regular task to your library…" onkeydown="if(event.key==='Enter') addRecurring()">
+              <button class="add-btn" onclick="addRecurring()">+ Add</button>
+            </div>
+            <div class="notice n-rec">
+              🔁 Click <strong>→ Today</strong> or <strong>→ Tomorrow</strong> to copy a task. Tasks stay in the library permanently.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BACKLOG -->
+      <div class="tab-pane" id="pane-backlog">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><span class="dot dot-backlog"></span>Backlog</span>
+            <span style="font-size:10px;color:var(--text-muted);">Not today or tomorrow</span>
+          </div>
+          <div class="section">
+            <div class="task-list" id="backlogList"></div>
+            <div class="add-area">
+              <input class="add-input" id="backlogInput" placeholder="Something to remember but not urgent…" onkeydown="if(event.key==='Enter') addTask('backlog')">
+              <label class="conf-label" title="Confidential"><input type="checkbox" id="backlogConf"> 🔒</label>
+              <button class="add-btn" onclick="addTask('backlog')">+ Add</button>
+            </div>
+            <div class="notice n-conf" style="margin-top:12px;">
+              🔒 Tasks marked confidential never appear in any Teams post.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /left-col -->
+
+    <!-- RIGHT COL -->
+    <div class="right-col">
+
+      <div class="panel">
+        <div class="stats-row">
+          <div class="stat"><div class="stat-num c-today"  id="statToday">0</div><div class="stat-label">Today</div></div>
+          <div class="stat"><div class="stat-num c-done"   id="statDone">0</div><div class="stat-label">Done</div></div>
+          <div class="stat"><div class="stat-num c-tmrw"   id="statTmrw">0</div><div class="stat-label">Tmrw</div></div>
+          <div class="stat"><div class="stat-num c-backlog" id="statBacklog">0</div><div class="stat-label">Backlog</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">☀️ Morning Stand-up</span></div>
+        <div class="post-content">
+          <div class="post-box" id="morningPost"></div>
+          <button class="copy-btn" id="morningCopyBtn" onclick="copyPost('morning')">Copy for Teams</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">🌙 End of Day</span></div>
+        <div class="post-content">
+          <div class="post-box" id="eodPost"></div>
+          <button class="copy-btn" id="eodCopyBtn" onclick="copyPost('eod')">Copy for Teams</button>
+        </div>
+      </div>
+
+      <div class="panel" style="border-color:#b0cfcf;">
+        <div class="panel-header" style="background:#edf5f5;">
+          <span class="panel-title" style="color:var(--tomorrow);">⏭️ Tomorrow's Stand-up (draft)</span>
+        </div>
+        <div class="post-content">
+          <div class="post-box" id="tomorrowPost" style="border-color:#b0cfcf;background:#edf5f5;"></div>
+          <button class="copy-btn" id="tomorrowCopyBtn" onclick="copyPost('tomorrow')" style="background:var(--tomorrow);">Copy for Teams</button>
+          <button class="start-btn" onclick="startTomorrow()">🌅 Start Tomorrow — move to Today</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIGURATION — fill these in after Supabase setup
+// ═══════════════════════════════════════════════
+const SUPABASE_URL = 'Http://yqeohnvtdxjvufskusff.supabase.co
+';
+const SUPABASE_ANON_KEY = 'sb_publishable_GPeB3t5o7FIb3ILA93s3Uw_5qcEYbLJ ';
+// ═══════════════════════════════════════════════
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── State ──────────────────────────────────────
+let tasks     = [];
+let recurring = [];
+let currentUser = null;
+let authMode = 'signin'; // or 'signup'
+
+// ── Sync indicator ─────────────────────────────
+function setSyncState(state) {
+  const dot   = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '');
+  label.textContent = state === 'syncing' ? 'Saving…' : state === 'error' ? 'Error' : 'Synced';
+}
+
+// ── Date ───────────────────────────────────────
+const now = new Date();
+document.getElementById('dateDisplay').textContent =
+  now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+// ── Auth mode toggle ───────────────────────────
+function toggleAuthMode() {
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('authSubtitle').textContent  = authMode === 'signup' ? 'Create your account' : 'Sign in to access your tasks';
+  document.getElementById('authBtn').textContent       = authMode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('authToggle').innerHTML      = authMode === 'signup'
+    ? 'Already have an account? <span onclick="toggleAuthMode()">Sign in</span>'
+    : 'No account? <span onclick="toggleAuthMode()">Create one</span>';
+  document.getElementById('authMsg').className = 'auth-msg';
+}
+
+function showAuthMsg(text, type) {
+  const el = document.getElementById('authMsg');
+  el.textContent = text;
+  el.className = 'auth-msg ' + type;
+}
+
+// ── Auth action ────────────────────────────────
+async function authAction() {
+  const email    = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const btn      = document.getElementById('authBtn');
+  if (!email || !password) { showAuthMsg('Please enter email and password.', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
+
+  let result;
+  if (authMode === 'signup') {
+    result = await sb.auth.signUp({ email, password });
+    if (!result.error) {
+      showAuthMsg('Account created! Check your email to confirm, then sign in.', 'success');
+      toggleAuthMode();
+    }
+  } else {
+    result = await sb.auth.signInWithPassword({ email, password });
+  }
+
+  if (result.error) {
+    showAuthMsg(result.error.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  tasks = []; recurring = [];
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'block';
+}
+
+// ── Load data from Supabase ────────────────────
+async function loadData() {
+  const [tasksRes, recurringRes] = await Promise.all([
+    sb.from('tasks').select('*').eq('user_id', currentUser.id).order('created_at'),
+    sb.from('recurring').select('*').eq('user_id', currentUser.id).order('created_at')
+  ]);
+  tasks     = tasksRes.data     || [];
+  recurring = recurringRes.data || [];
+  render();
+}
+
+// ── Save helpers ───────────────────────────────
+async function dbInsertTask(task) {
+  setSyncState('syncing');
+  const { data, error } = await sb.from('tasks').insert({
+    user_id: currentUser.id,
+    text: task.text,
+    bucket: task.bucket,
+    done: task.done,
+    confidential: task.confidential
+  }).select().single();
+  setSyncState(error ? 'error' : 'synced');
+  return data;
+}
+
+async function dbUpdateTask(id, changes) {
+  setSyncState('syncing');
+  const { error } = await sb.from('tasks').update(changes).eq('id', id).eq('user_id', currentUser.id);
+  setSyncState(error ? 'error' : 'synced');
+}
+
+async function dbDeleteTask(id) {
+  setSyncState('syncing');
+  const { error } = await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+  setSyncState(error ? 'error' : 'synced');
+}
+
+async function dbInsertRecurring(text) {
+  setSyncState('syncing');
+  const { data, error } = await sb.from('recurring').insert({
+    user_id: currentUser.id, text
+  }).select().single();
+  setSyncState(error ? 'error' : 'synced');
+  return data;
+}
+
+async function dbDeleteRecurring(id) {
+  setSyncState('syncing');
+  const { error } = await sb.from('recurring').delete().eq('id', id).eq('user_id', currentUser.id);
+  setSyncState(error ? 'error' : 'synced');
+}
+
+// ── Tabs ───────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + tab).classList.add('active');
+  document.querySelector('.tab-' + tab).classList.add('active');
+}
+
+// ── Add task ───────────────────────────────────
+async function addTask(bucket) {
+  const input  = document.getElementById(bucket + 'Input');
+  const confEl = document.getElementById(bucket + 'Conf');
+  const text   = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const isConf = confEl ? confEl.checked : false;
+  if (confEl) confEl.checked = false;
+
+  const newTask = { text, bucket, done: false, confidential: isConf };
+  // Optimistic UI
+  const tempId = 'temp_' + Date.now();
+  tasks.push({ id: tempId, ...newTask });
+  render();
+
+  const saved = await dbInsertTask(newTask);
+  if (saved) {
+    tasks = tasks.filter(t => t.id !== tempId);
+    tasks.push(saved);
+    render();
+  }
+}
+
+// ── Recurring ──────────────────────────────────
+async function addRecurring() {
+  const input = document.getElementById('recurringInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  const tempId = 'temp_' + Date.now();
+  recurring.push({ id: tempId, text });
+  render();
+
+  const saved = await dbInsertRecurring(text);
+  if (saved) {
+    recurring = recurring.filter(r => r.id !== tempId);
+    recurring.push(saved);
+    render();
+  }
+}
+
+async function copyRecurringTo(rid, bucket) {
+  const r = recurring.find(x => x.id === rid);
+  if (!r) return;
+
+  const btn = document.getElementById(`rb-${rid}-${bucket}`);
+  if (btn) { btn.textContent = '✓ Done'; btn.disabled = true; }
+
+  const newTask = { text: r.text, bucket, done: false, confidential: false };
+  const tempId = 'temp_' + Date.now();
+  tasks.push({ id: tempId, ...newTask });
+  render();
+
+  const saved = await dbInsertTask(newTask);
+  if (saved) {
+    tasks = tasks.filter(t => t.id !== tempId);
+    tasks.push(saved);
+    render();
+  }
+
+  if (btn) { setTimeout(() => { btn.textContent = bucket === 'today' ? '→ Today' : '→ Tomorrow'; btn.disabled = false; }, 1600); }
+}
+
+async function deleteRecurring(rid) {
+  if (!confirm('Remove this from the library?')) return;
+  recurring = recurring.filter(x => x.id !== rid);
+  render();
+  await dbDeleteRecurring(rid);
+}
+
+// ── Task actions ───────────────────────────────
+async function toggleDone(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  render();
+  await dbUpdateTask(id, { done: t.done });
+}
+
+async function moveTask(id, bucket) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.bucket = bucket;
+  t.done   = false;
+  render();
+  await dbUpdateTask(id, { bucket, done: false });
+}
+
+async function deleteTask(id) {
+  tasks = tasks.filter(x => x.id !== id);
+  render();
+  await dbDeleteTask(id);
+}
+
+function pullFromBacklog(dest) {
+  const bl = tasks.filter(t => t.bucket === 'backlog');
+  if (!bl.length) { alert('Backlog is empty!'); return; }
+  const list = bl.map((t,i) => `${i+1}. ${t.confidential ? '🔒 ' : ''}${t.text}`).join('\n');
+  const ans  = prompt(`Pull into ${dest}:\n\n${list}\n\nEnter number:`);
+  if (!ans) return;
+  const idx = parseInt(ans) - 1;
+  if (idx >= 0 && idx < bl.length) moveTask(bl[idx].id, dest);
+}
+
+async function carryForward() {
+  const unfinished = tasks.filter(t => t.bucket === 'today' && !t.done);
+  if (!unfinished.length) { alert('No unfinished tasks in Today!'); return; }
+  for (const t of unfinished) {
+    const newTask = { text: t.text, bucket: 'tomorrow', done: false, confidential: t.confidential };
+    const tempId = 'temp_' + Date.now() + Math.random();
+    tasks.push({ id: tempId, ...newTask });
+    render();
+    const saved = await dbInsertTask(newTask);
+    if (saved) {
+      tasks = tasks.filter(x => x.id !== tempId);
+      tasks.push(saved);
+    }
+  }
+  render();
+  switchTab('tomorrow');
+}
+
+async function startTomorrow() {
+  const tmrw = tasks.filter(t => t.bucket === 'tomorrow');
+  if (!tmrw.length && !confirm('No tasks planned for tomorrow yet. Start a fresh day anyway?')) return;
+
+  // IDs to delete: completed tasks + 'new' tasks
+  const toDelete = tasks.filter(t => t.done || t.bucket === 'new').map(t => t.id);
+  // Remove from local state
+  tasks = tasks.filter(t => !t.done && t.bucket !== 'new');
+  // Unfinished today tasks stay in 'today'
+  tasks.filter(t => t.bucket === 'today').forEach(t => t.done = false);
+  // Tomorrow → today
+  tasks.filter(t => t.bucket === 'tomorrow').forEach(t => { t.bucket = 'today'; t.done = false; });
+  render();
+  switchTab('today');
+
+  // Sync deletions
+  setSyncState('syncing');
+  for (const id of toDelete) {
+    if (!String(id).startsWith('temp_')) await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+  }
+  // Sync moves (tomorrow → today)
+  for (const t of tasks.filter(x => x.bucket === 'today')) {
+    if (!String(t.id).startsWith('temp_')) await dbUpdateTask(t.id, { bucket: 'today', done: false });
+  }
+  setSyncState('synced');
+}
+
+// ── Helpers ────────────────────────────────────
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Render ─────────────────────────────────────
+function renderList(containerId, bucket) {
+  const el   = document.getElementById(containerId);
+  const list = tasks.filter(t => t.bucket === bucket);
+  if (!list.length) { el.innerHTML = '<div class="empty-state">No tasks yet</div>'; return; }
+
+  el.innerHTML = list.map(t => {
+    let moveBtns = '';
+    if (bucket === 'today' || bucket === 'new') {
+      moveBtns = `<button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">→ tmrw</button>
+                  <button class="task-btn" onclick="moveTask('${t.id}','backlog')">→ backlog</button>`;
+    } else if (bucket === 'tomorrow') {
+      moveBtns = `<button class="task-btn promote" onclick="moveTask('${t.id}','today')">→ today</button>
+                  <button class="task-btn" onclick="moveTask('${t.id}','backlog')">→ backlog</button>`;
+    } else if (bucket === 'backlog') {
+      moveBtns = `<button class="task-btn promote" onclick="moveTask('${t.id}','today')">→ today</button>
+                  <button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">→ tmrw</button>`;
+    }
+    return `<div class="task-item${t.done?' done':''}${t.confidential?' confidential':''}">
+      <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')"></div>
+      <span class="task-text">${esc(t.text)}</span>
+      ${t.confidential ? '<span class="task-tag">🔒</span>' : ''}
+      <div class="task-actions">${moveBtns}<button class="task-btn danger" onclick="deleteTask('${t.id}')">✕</button></div>
+    </div>`;
+  }).join('');
+}
+
+function renderRecurring() {
+  const el = document.getElementById('recurringList');
+  if (!recurring.length) { el.innerHTML = '<div class="empty-state">Your recurring task library is empty — add tasks above</div>'; return; }
+  el.innerHTML = recurring.map(r => `
+    <div class="recurring-item">
+      <span class="task-text">${esc(r.text)}</span>
+      <button class="rec-btn to-today" id="rb-${r.id}-today"    onclick="copyRecurringTo('${r.id}','today')">→ Today</button>
+      <button class="rec-btn to-tmrw"  id="rb-${r.id}-tomorrow" onclick="copyRecurringTo('${r.id}','tomorrow')">→ Tomorrow</button>
+      <button class="task-btn danger" style="opacity:0.45;" onclick="deleteRecurring('${r.id}')">✕</button>
+    </div>`).join('');
+}
+
+function genMorning() {
+  const t = tasks.filter(x => x.bucket === 'today' && !x.confidential);
+  let p = `☀️ Good morning, today I will be WFO and;\n\n`;
+  if (t.length) t.forEach(x => p += `• ${x.text}\n`); else p += `• (to be added)\n`;
+  return p.trim();
+}
+
+function genEod() {
+  const done    = tasks.filter(t => (t.bucket==='today'||t.bucket==='new') && t.done  && !t.confidential);
+  const notDone = tasks.filter(t =>  t.bucket==='today'                   && !t.done  && !t.confidential);
+  const added   = tasks.filter(t =>  t.bucket==='new'                                 && !t.confidential);
+  let p = `🌙 Today I have:\n\n`;
+  if (done.length)    { p += `✅ Completed:\n`;          done.forEach(t => p += `• ${t.text} ✓\n`); }
+  if (added.length)   { p += `\n➕ Added today:\n`;      added.forEach(t => p += `• ${t.text}${t.done?' ✓':''}\n`); }
+  if (notDone.length) { p += `\n⏭️ Carrying forward:\n`; notDone.forEach(t => p += `• ${t.text}\n`); }
+  if (!done.length && !notDone.length && !added.length) p += `(No tasks recorded today)\n`;
+  p += `\nI hope everyone has a lovely evening! 🌟`;
+  return p.trim();
+}
+
+function genTomorrow() {
+  const t = tasks.filter(x => x.bucket === 'tomorrow' && !x.confidential);
+  let p = `☀️ Good morning, today I will be WFO and;\n\n`;
+  if (t.length) t.forEach(x => p += `• ${x.text}\n`); else p += `• (add tasks in the Tomorrow tab)\n`;
+  return p.trim();
+}
+
+function updateStats() {
+  document.getElementById('statToday').textContent   = tasks.filter(t=>t.bucket==='today'||t.bucket==='new').length;
+  document.getElementById('statDone').textContent    = tasks.filter(t=>t.done).length;
+  document.getElementById('statTmrw').textContent    = tasks.filter(t=>t.bucket==='tomorrow').length;
+  document.getElementById('statBacklog').textContent = tasks.filter(t=>t.bucket==='backlog').length;
+}
+
+async function copyPost(which) {
+  const text  = which==='morning' ? genMorning() : which==='eod' ? genEod() : genTomorrow();
+  const btnId = which==='morning' ? 'morningCopyBtn' : which==='eod' ? 'eodCopyBtn' : 'tomorrowCopyBtn';
+  await navigator.clipboard.writeText(text);
+  const btn = document.getElementById(btnId);
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied!';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+}
+
+function render() {
+  renderList('todayList', 'today');
+  renderList('newList', 'new');
+  renderList('tomorrowList', 'tomorrow');
+  renderList('backlogList', 'backlog');
+  renderRecurring();
+  document.getElementById('morningPost').textContent  = genMorning();
+  document.getElementById('eodPost').textContent      = genEod();
+  document.getElementById('tomorrowPost').textContent = genTomorrow();
+  updateStats();
+}
+
+// ── Boot ───────────────────────────────────────
+async function boot() {
+  // Listen for auth state changes
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display  = 'block';
+      await loadData();
+    } else {
+      currentUser = null;
+      document.getElementById('authScreen').style.display = 'block';
+      document.getElementById('appScreen').style.display  = 'none';
+    }
+    document.getElementById('loadingOverlay').style.display = 'none';
+  });
+
+  // Check existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
