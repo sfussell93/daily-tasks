@@ -38,91 +38,86 @@
     padding: 24px;
   }
 
-  /* ── Auth screen ── */
+  /* ── PIN Auth screen ── */
+  /* ── PIN Auth screen ── */
   #authScreen {
-    max-width: 360px;
-    margin: 80px auto;
+    max-width: 320px;
+    margin: 60px auto;
     background: var(--surface);
     border: 1.5px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     overflow: hidden;
   }
 
-  .auth-header {
+  .pin-header {
     padding: 24px 24px 16px;
     border-bottom: 1.5px solid var(--border);
     background: var(--surface2);
+    text-align: center;
   }
 
-  .auth-header h1 {
-    font-family: 'Fraunces', serif;
-    font-size: 22px;
-    font-weight: 600;
+  .pin-header h1 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
+  .pin-header p { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  .pin-body { padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+  .pin-dots { display: flex; gap: 14px; justify-content: center; }
+
+  .pin-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--border); background: white;
+    transition: all 0.15s;
   }
 
-  .auth-header p {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 4px;
+  .pin-dot.filled { background: var(--text); border-color: var(--text); }
+  .pin-dot.error  { background: var(--red);  border-color: var(--red); animation: shake 0.4s ease; }
+  .pin-dot.success{ background: var(--accent); border-color: var(--accent); }
+
+  @keyframes shake {
+    0%,100%{ transform: translateX(0); }
+    20%    { transform: translateX(-6px); }
+    40%    { transform: translateX(6px); }
+    60%    { transform: translateX(-4px); }
+    80%    { transform: translateX(4px); }
   }
 
-  .auth-body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 64px);
+    gap: 10px;
+  }
 
-  .auth-field { display: flex; flex-direction: column; gap: 5px; }
+  .pin-key {
+    width: 64px; height: 64px;
+    font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600;
+    border: 1.5px solid var(--border); border-radius: 6px;
+    background: white; cursor: pointer; color: var(--text);
+    transition: all 0.1s; display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
 
-  .auth-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+  .pin-key:hover  { background: var(--surface2); border-color: var(--text); }
+  .pin-key:active { background: var(--text); color: white; transform: scale(0.95); }
+  .pin-key.del    { font-size: 16px; color: var(--text-muted); }
+  .pin-key.empty  { border: none; background: transparent; cursor: default; pointer-events: none; }
 
-  .auth-input {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    padding: 9px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 3px;
-    background: white;
-    color: var(--text);
-    outline: none;
+  .pin-msg { font-size: 11px; text-align: center; min-height: 16px; color: var(--text-muted); }
+  .pin-msg.error { color: var(--red); }
+  .pin-msg.success { color: var(--accent); }
+
+  .pin-setup-email {
+    width: 100%; font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 3px;
+    background: white; color: var(--text); outline: none;
     transition: border-color 0.15s;
-    width: 100%;
   }
+  .pin-setup-email:focus { border-color: var(--text); }
+  .pin-setup-email::placeholder { color: var(--text-muted); }
 
-  .auth-input:focus { border-color: var(--text); }
+  .pin-setup-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); align-self: flex-start; }
 
-  .auth-btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    padding: 10px;
-    background: var(--text);
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: opacity 0.15s;
-    width: 100%;
-    margin-top: 4px;
-  }
+  .pin-link { font-size: 10px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
 
-  .auth-btn:hover { opacity: 0.8; }
-  .auth-btn:disabled { opacity: 0.5; cursor: default; }
-
-  .auth-msg {
-    font-size: 11px;
-    text-align: center;
-    padding: 8px;
-    border-radius: 3px;
-    display: none;
-  }
-
-  .auth-msg.error { background: #fdeaea; color: var(--red); display: block; }
-  .auth-msg.success { background: var(--accent-light); color: var(--accent); display: block; }
-
-  .auth-toggle {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-align: center;
-    cursor: pointer;
-  }
-
-  .auth-toggle span { color: var(--blue); text-decoration: underline; cursor: pointer; }
 
   /* ── Main app ── */
   #appScreen { display: none; }
@@ -461,28 +456,47 @@
 <!-- Loading -->
 <div id="loadingOverlay">Loading…</div>
 
-<!-- Auth screen -->
+<!-- PIN Auth screen -->
 <div id="authScreen">
-  <div class="auth-header">
-    <h1>Daily Tasks</h1>
-    <p id="authSubtitle">Sign in to access your tasks</p>
+  <div class="pin-header">
+    <h1 id="pinTitle">Daily Tasks</h1>
+    <p id="pinSubtitle">Enter your PIN</p>
   </div>
-  <div class="auth-body">
-    <div class="auth-field">
-      <label class="auth-label">Email</label>
-      <input class="auth-input" type="email" id="authEmail" placeholder="you@example.com" onkeydown="if(event.key==='Enter') authAction()">
+  <div class="pin-body">
+    <!-- Setup email field (hidden until first setup) -->
+    <div id="emailSetupRow" style="display:none;width:100%;display:none;flex-direction:column;gap:6px;">
+      <span class="pin-setup-label">Your email (for PIN reset only)</span>
+      <input class="pin-setup-email" type="email" id="setupEmail" placeholder="you@example.com">
     </div>
-    <div class="auth-field">
-      <label class="auth-label">Password</label>
-      <input class="auth-input" type="password" id="authPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter') authAction()">
+
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
     </div>
-    <div class="auth-msg" id="authMsg"></div>
-    <button class="auth-btn" id="authBtn" onclick="authAction()">Sign In</button>
-    <div class="auth-toggle" id="authToggle">
-      No account? <span onclick="toggleAuthMode()">Create one</span>
+
+    <div class="pin-msg" id="pinMsg"></div>
+
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key empty"></button>
+      <button class="pin-key" onclick="pinPress('0')">0</button>
+      <button class="pin-key del" onclick="pinDel()">⌫</button>
     </div>
+
+    <span class="pin-link" id="resetLink" onclick="sendReset()" style="display:none;">Forgot PIN? Send reset email</span>
   </div>
 </div>
+
 
 <!-- Main app -->
 <div id="appScreen">
@@ -676,408 +690,47 @@ const now = new Date();
 document.getElementById('dateDisplay').textContent =
   now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-// ── Auth mode toggle ───────────────────────────
-function toggleAuthMode() {
-  authMode = authMode === 'signin' ? 'signup' : 'signin';
-  document.getElementById('authSubtitle').textContent  = authMode === 'signup' ? 'Create your account' : 'Sign in to access your tasks';
-  document.getElementById('authBtn').textContent       = authMode === 'signup' ? 'Create Account' : 'Sign In';
-  document.getElementById('authToggle').innerHTML      = authMode === 'signup'
-    ? 'Already have an account? <span onclick="toggleAuthMode()">Sign in</span>'
-    : 'No account? <span onclick="toggleAuthMode()">Create one</span>';
-  document.getElementById('authMsg').className = 'auth-msg';
-}
+// ── PIN Auth Logic ─────────────────────────────
+// Uses a deterministic hidden email from a fixed app key + PIN as password
+// PIN is also stored in localStorage so re-entry on same device is seamless
 
-function showAuthMsg(text, type) {
-  const el = document.getElementById('authMsg');
-  el.textContent = text;
-  el.className = 'auth-msg ' + type;
-}
+const APP_KEY   = 'dailytasks_v1'; // unique per app — change for meeting tracker
+const PIN_STORE = 'dtm_pin_set';
 
-// ── Auth action ────────────────────────────────
-async function authAction() {
-  const email    = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  const btn      = document.getElementById('authBtn');
-  if (!email || !password) { showAuthMsg('Please enter email and password.', 'error'); return; }
+let pinBuffer  = '';
+let pinMode    = 'enter'; // 'setup_email' | 'setup_pin' | 'setup_confirm' | 'enter'
+let setupEmail = '';
+let setupPinFirst = '';
 
-  btn.disabled = true;
-  btn.textContent = authMode === 'signup' ? 'Creating…' : 'Signing in…';
-
-  let result;
-  if (authMode === 'signup') {
-    result = await sb.auth.signUp({ email, password });
-    if (!result.error) {
-      showAuthMsg('Account created! Check your email to confirm, then sign in.', 'success');
-      toggleAuthMode();
-    }
-  } else {
-    result = await sb.auth.signInWithPassword({ email, password });
-  }
-
-  if (result.error) {
-    showAuthMsg(result.error.message, 'error');
-  }
-
-  btn.disabled = false;
-  btn.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
-}
-
-async function signOut() {
-  await sb.auth.signOut();
-  tasks = []; recurring = [];
-  document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('authScreen').style.display = 'block';
-}
-
-// ── Load data from Supabase ────────────────────
-async function loadData() {
-  const [tasksRes, recurringRes] = await Promise.all([
-    sb.from('tasks').select('*').eq('user_id', currentUser.id).order('created_at'),
-    sb.from('recurring').select('*').eq('user_id', currentUser.id).order('created_at')
-  ]);
-  tasks     = tasksRes.data     || [];
-  recurring = recurringRes.data || [];
-  render();
-}
-
-// ── Save helpers ───────────────────────────────
-async function dbInsertTask(task) {
-  setSyncState('syncing');
-  const { data, error } = await sb.from('tasks').insert({
-    user_id: currentUser.id,
-    text: task.text,
-    bucket: task.bucket,
-    done: task.done,
-    confidential: task.confidential
-  }).select().single();
-  setSyncState(error ? 'error' : 'synced');
-  return data;
-}
-
-async function dbUpdateTask(id, changes) {
-  setSyncState('syncing');
-  const { error } = await sb.from('tasks').update(changes).eq('id', id).eq('user_id', currentUser.id);
-  setSyncState(error ? 'error' : 'synced');
-}
-
-async function dbDeleteTask(id) {
-  setSyncState('syncing');
-  const { error } = await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
-  setSyncState(error ? 'error' : 'synced');
-}
-
-async function dbInsertRecurring(text) {
-  setSyncState('syncing');
-  const { data, error } = await sb.from('recurring').insert({
-    user_id: currentUser.id, text
-  }).select().single();
-  setSyncState(error ? 'error' : 'synced');
-  return data;
-}
-
-async function dbDeleteRecurring(id) {
-  setSyncState('syncing');
-  const { error } = await sb.from('recurring').delete().eq('id', id).eq('user_id', currentUser.id);
-  setSyncState(error ? 'error' : 'synced');
-}
-
-// ── Tabs ───────────────────────────────────────
-function switchTab(tab) {
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('pane-' + tab).classList.add('active');
-  document.querySelector('.tab-' + tab).classList.add('active');
-}
-
-// ── Add task ───────────────────────────────────
-async function addTask(bucket) {
-  const input  = document.getElementById(bucket + 'Input');
-  const confEl = document.getElementById(bucket + 'Conf');
-  const text   = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  const isConf = confEl ? confEl.checked : false;
-  if (confEl) confEl.checked = false;
-
-  const newTask = { text, bucket, done: false, confidential: isConf };
-  // Optimistic UI
-  const tempId = 'temp_' + Date.now();
-  tasks.push({ id: tempId, ...newTask });
-  render();
-
-  const saved = await dbInsertTask(newTask);
-  if (saved) {
-    tasks = tasks.filter(t => t.id !== tempId);
-    tasks.push(saved);
-    render();
-  }
-}
-
-// ── Recurring ──────────────────────────────────
-async function addRecurring() {
-  const input = document.getElementById('recurringInput');
-  const text  = input.value.trim();
-  if (!text) return;
-  input.value = '';
-
-  const tempId = 'temp_' + Date.now();
-  recurring.push({ id: tempId, text });
-  render();
-
-  const saved = await dbInsertRecurring(text);
-  if (saved) {
-    recurring = recurring.filter(r => r.id !== tempId);
-    recurring.push(saved);
-    render();
-  }
-}
-
-async function copyRecurringTo(rid, bucket) {
-  const r = recurring.find(x => x.id === rid);
-  if (!r) return;
-
-  const btn = document.getElementById(`rb-${rid}-${bucket}`);
-  if (btn) { btn.textContent = '✓ Done'; btn.disabled = true; }
-
-  const newTask = { text: r.text, bucket, done: false, confidential: false };
-  const tempId = 'temp_' + Date.now();
-  tasks.push({ id: tempId, ...newTask });
-  render();
-
-  const saved = await dbInsertTask(newTask);
-  if (saved) {
-    tasks = tasks.filter(t => t.id !== tempId);
-    tasks.push(saved);
-    render();
-  }
-
-  if (btn) { setTimeout(() => { btn.textContent = bucket === 'today' ? '→ Today' : '→ Tomorrow'; btn.disabled = false; }, 1600); }
-}
-
-async function deleteRecurring(rid) {
-  if (!confirm('Remove this from the library?')) return;
-  recurring = recurring.filter(x => x.id !== rid);
-  render();
-  await dbDeleteRecurring(rid);
-}
-
-// ── Task actions ───────────────────────────────
-async function toggleDone(id) {
-  const t = tasks.find(x => x.id === id);
-  if (!t) return;
-  t.done = !t.done;
-  render();
-  await dbUpdateTask(id, { done: t.done });
-}
-
-async function moveTask(id, bucket) {
-  const t = tasks.find(x => x.id === id);
-  if (!t) return;
-  t.bucket = bucket;
-  t.done   = false;
-  render();
-  await dbUpdateTask(id, { bucket, done: false });
-}
-
-async function deleteTask(id) {
-  tasks = tasks.filter(x => x.id !== id);
-  render();
-  await dbDeleteTask(id);
-}
-
-function pullFromBacklog(dest) {
-  const bl = tasks.filter(t => t.bucket === 'backlog');
-  if (!bl.length) { alert('Backlog is empty!'); return; }
-  const list = bl.map((t,i) => `${i+1}. ${t.confidential ? '🔒 ' : ''}${t.text}`).join('\n');
-  const ans  = prompt(`Pull into ${dest}:\n\n${list}\n\nEnter number:`);
-  if (!ans) return;
-  const idx = parseInt(ans) - 1;
-  if (idx >= 0 && idx < bl.length) moveTask(bl[idx].id, dest);
-}
-
-async function carryForward() {
-  const unfinished = tasks.filter(t => t.bucket === 'today' && !t.done);
-  if (!unfinished.length) { alert('No unfinished tasks in Today!'); return; }
-  for (const t of unfinished) {
-    const newTask = { text: t.text, bucket: 'tomorrow', done: false, confidential: t.confidential };
-    const tempId = 'temp_' + Date.now() + Math.random();
-    tasks.push({ id: tempId, ...newTask });
-    render();
-    const saved = await dbInsertTask(newTask);
-    if (saved) {
-      tasks = tasks.filter(x => x.id !== tempId);
-      tasks.push(saved);
-    }
-  }
-  render();
-  switchTab('tomorrow');
-}
-
-async function startTomorrow() {
-  const tmrw = tasks.filter(t => t.bucket === 'tomorrow');
-  if (!tmrw.length && !confirm('No tasks planned for tomorrow yet. Start a fresh day anyway?')) return;
-
-  // IDs to delete: completed tasks + 'new' tasks
-  const toDelete = tasks.filter(t => t.done || t.bucket === 'new').map(t => t.id);
-  // Remove from local state
-  tasks = tasks.filter(t => !t.done && t.bucket !== 'new');
-  // Unfinished today tasks stay in 'today'
-  tasks.filter(t => t.bucket === 'today').forEach(t => t.done = false);
-  // Tomorrow → today
-  tasks.filter(t => t.bucket === 'tomorrow').forEach(t => { t.bucket = 'today'; t.done = false; });
-  render();
-  switchTab('today');
-
-  // Sync deletions
-  setSyncState('syncing');
-  for (const id of toDelete) {
-    if (!String(id).startsWith('temp_')) await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
-  }
-  // Sync moves (tomorrow → today)
-  for (const t of tasks.filter(x => x.bucket === 'today')) {
-    if (!String(t.id).startsWith('temp_')) await dbUpdateTask(t.id, { bucket: 'today', done: false });
-  }
-  setSyncState('synced');
-}
-
-// ── Helpers ────────────────────────────────────
-function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// ── Render ─────────────────────────────────────
-function renderList(containerId, bucket) {
-  const el   = document.getElementById(containerId);
-  const list = tasks.filter(t => t.bucket === bucket);
-  if (!list.length) { el.innerHTML = '<div class="empty-state">No tasks yet</div>'; return; }
-
-  el.innerHTML = list.map(t => {
-    let moveBtns = '';
-    if (bucket === 'today' || bucket === 'new') {
-      moveBtns = `<button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">→ tmrw</button>
-                  <button class="task-btn" onclick="moveTask('${t.id}','backlog')">→ backlog</button>`;
-    } else if (bucket === 'tomorrow') {
-      moveBtns = `<button class="task-btn promote" onclick="moveTask('${t.id}','today')">→ today</button>
-                  <button class="task-btn" onclick="moveTask('${t.id}','backlog')">→ backlog</button>`;
-    } else if (bucket === 'backlog') {
-      moveBtns = `<button class="task-btn promote" onclick="moveTask('${t.id}','today')">→ today</button>
-                  <button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">→ tmrw</button>`;
-    }
-    return `<div class="task-item${t.done?' done':''}${t.confidential?' confidential':''}">
-      <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')"></div>
-      <span class="task-text">${esc(t.text)}</span>
-      ${t.confidential ? '<span class="task-tag">🔒</span>' : ''}
-      <div class="task-actions">${moveBtns}<button class="task-btn danger" onclick="deleteTask('${t.id}')">✕</button></div>
-    </div>`;
-  }).join('');
-}
-
-function renderRecurring() {
-  const el = document.getElementById('recurringList');
-  if (!recurring.length) { el.innerHTML = '<div class="empty-state">Your recurring task library is empty — add tasks above</div>'; return; }
-  el.innerHTML = recurring.map(r => `
-    <div class="recurring-item">
-      <span class="task-text">${esc(r.text)}</span>
-      <button class="rec-btn to-today" id="rb-${r.id}-today"    onclick="copyRecurringTo('${r.id}','today')">→ Today</button>
-      <button class="rec-btn to-tmrw"  id="rb-${r.id}-tomorrow" onclick="copyRecurringTo('${r.id}','tomorrow')">→ Tomorrow</button>
-      <button class="task-btn danger" style="opacity:0.45;" onclick="deleteRecurring('${r.id}')">✕</button>
-    </div>`).join('');
-}
-
-function genMorning() {
-  const t = tasks.filter(x => x.bucket === 'today' && !x.confidential);
-  let p = `☀️ Good morning, today I will be WFO and;\n\n`;
-  if (t.length) t.forEach(x => p += `• ${x.text}\n`); else p += `• (to be added)\n`;
-  return p.trim();
-}
-
-function genEod() {
-  const done    = tasks.filter(t => (t.bucket==='today'||t.bucket==='new') && t.done  && !t.confidential);
-  const notDone = tasks.filter(t =>  t.bucket==='today'                   && !t.done  && !t.confidential);
-  const added   = tasks.filter(t =>  t.bucket==='new'                                 && !t.confidential);
-  let p = `🌙 Today I have:\n\n`;
-  if (done.length)    { p += `✅ Completed:\n`;          done.forEach(t => p += `• ${t.text} ✓\n`); }
-  if (added.length)   { p += `\n➕ Added today:\n`;      added.forEach(t => p += `• ${t.text}${t.done?' ✓':''}\n`); }
-  if (notDone.length) { p += `\n⏭️ Carrying forward:\n`; notDone.forEach(t => p += `• ${t.text}\n`); }
-  if (!done.length && !notDone.length && !added.length) p += `(No tasks recorded today)\n`;
-  p += `\nI hope everyone has a lovely evening! 🌟`;
-  return p.trim();
-}
-
-function genTomorrow() {
-  const t = tasks.filter(x => x.bucket === 'tomorrow' && !x.confidential);
-  let p = `☀️ Good morning, today I will be WFO and;\n\n`;
-  if (t.length) t.forEach(x => p += `• ${x.text}\n`); else p += `• (add tasks in the Tomorrow tab)\n`;
-  return p.trim();
-}
-
-function updateStats() {
-  document.getElementById('statToday').textContent   = tasks.filter(t=>t.bucket==='today'||t.bucket==='new').length;
-  document.getElementById('statDone').textContent    = tasks.filter(t=>t.done).length;
-  document.getElementById('statTmrw').textContent    = tasks.filter(t=>t.bucket==='tomorrow').length;
-  document.getElementById('statBacklog').textContent = tasks.filter(t=>t.bucket==='backlog').length;
-}
-
-async function copyPost(which) {
-  const text  = which==='morning' ? genMorning() : which==='eod' ? genEod() : genTomorrow();
-  const btnId = which==='morning' ? 'morningCopyBtn' : which==='eod' ? 'eodCopyBtn' : 'tomorrowCopyBtn';
-  await navigator.clipboard.writeText(text);
-  const btn = document.getElementById(btnId);
-  const orig = btn.textContent;
-  btn.textContent = '✓ Copied!';
-  btn.classList.add('copied');
-  setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
-}
-
-function render() {
-  renderList('todayList', 'today');
-  renderList('newList', 'new');
-  renderList('tomorrowList', 'tomorrow');
-  renderList('backlogList', 'backlog');
-  renderRecurring();
-  document.getElementById('morningPost').textContent  = genMorning();
-  document.getElementById('eodPost').textContent      = genEod();
-  document.getElementById('tomorrowPost').textContent = genTomorrow();
-  updateStats();
-}
-
-// ── Boot ───────────────────────────────────────
-function hideLoading() {
-  document.getElementById('loadingOverlay').style.display = 'none';
-}
-function showAuth() {
-  hideLoading();
-  document.getElementById('authScreen').style.display = 'block';
-  document.getElementById('appScreen').style.display  = 'none';
-}
-function showApp() {
-  hideLoading();
-  document.getElementById('authScreen').style.display = 'none';
-  document.getElementById('appScreen').style.display  = 'block';
+function hiddenEmail(email) {
+  // Derive a deterministic hidden email from user's real email
+  const encoded = btoa(email + APP_KEY).replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,20);
+  return `${encoded}@dtm-user.com`;
 }
 
 async function boot() {
-  // Safety net — never stuck loading longer than 5 seconds
   const timeout = setTimeout(() => {
-    if (document.getElementById('loadingOverlay').style.display !== 'none') {
-      showAuth();
-    }
+    document.getElementById('loadingOverlay').style.display = 'none';
+    initPinScreen();
   }, 5000);
 
   try {
-    const { data: { session }, error } = await sb.auth.getSession();
+    const { data: { session } } = await sb.auth.getSession();
     clearTimeout(timeout);
-    if (error || !session) {
-      showAuth();
-      return;
+    if (session?.user) {
+      currentUser = session.user;
+      showApp();
+      await loadData();
+    } else {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      initPinScreen();
     }
-    currentUser = session.user;
-    showApp();
-    await loadData();
-  } catch (err) {
+  } catch(e) {
     clearTimeout(timeout);
-    showAuth();
+    document.getElementById('loadingOverlay').style.display = 'none';
+    initPinScreen();
   }
 
-  // Listen for future sign in / sign out events
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       currentUser = session.user;
@@ -1085,13 +738,180 @@ async function boot() {
       await loadData();
     } else if (event === 'SIGNED_OUT') {
       currentUser = null;
-      tasks = []; recurring = [];
       showAuth();
     }
   });
 }
 
+function initPinScreen() {
+  const stored = localStorage.getItem(PIN_STORE);
+  if (!stored) {
+    // First time — need to set up
+    pinMode = 'setup_email';
+    document.getElementById('pinSubtitle').textContent = 'First time setup — enter your email';
+    document.getElementById('emailSetupRow').style.display = 'flex';
+    document.getElementById('pinMsg').textContent = 'Your email is only used to reset your PIN if you forget it.';
+    document.getElementById('pinMsg').className = 'pin-msg';
+    // Show confirm button instead of keypad for email step
+    document.querySelector('.pin-keypad').style.display = 'none';
+    document.querySelector('.pin-dots').style.display = 'none';
+    // Add a continue button
+    const btn = document.createElement('button');
+    btn.id = 'emailContinueBtn';
+    btn.className = 'add-btn';
+    btn.style.cssText = 'width:100%;padding:12px;font-size:13px;';
+    btn.textContent = 'Continue →';
+    btn.onclick = confirmEmail;
+    document.querySelector('.pin-body').appendChild(btn);
+  } else {
+    pinMode = 'enter';
+    document.getElementById('pinSubtitle').textContent = 'Enter your 4-digit PIN';
+    document.getElementById('resetLink').style.display = 'inline';
+  }
+  document.getElementById('authScreen').style.display = 'block';
+}
+
+function confirmEmail() {
+  const email = document.getElementById('setupEmail').value.trim();
+  if (!email || !email.includes('@')) {
+    document.getElementById('pinMsg').textContent = 'Please enter a valid email.';
+    document.getElementById('pinMsg').className = 'pin-msg error';
+    return;
+  }
+  setupEmail = email;
+  pinMode = 'setup_pin';
+  document.getElementById('pinSubtitle').textContent = 'Choose your 4-digit PIN';
+  document.getElementById('pinMsg').textContent = 'Pick a PIN you\'ll remember.';
+  document.getElementById('pinMsg').className = 'pin-msg';
+  document.getElementById('emailSetupRow').style.display = 'none';
+  document.getElementById('emailContinueBtn').remove();
+  document.querySelector('.pin-keypad').style.display = 'grid';
+  document.querySelector('.pin-dots').style.display = 'flex';
+}
+
+function pinPress(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updateDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(() => handlePinComplete(), 120);
+  }
+}
+
+function pinDel() {
+  if (pinBuffer.length > 0) {
+    pinBuffer = pinBuffer.slice(0, -1);
+    updateDots();
+  }
+}
+
+function updateDots(state) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.className = 'pin-dot';
+    if (state === 'error')   dot.classList.add('error');
+    else if (state === 'success') dot.classList.add('success');
+    else if (i < pinBuffer.length) dot.classList.add('filled');
+  }
+}
+
+async function handlePinComplete() {
+  if (pinMode === 'setup_pin') {
+    setupPinFirst = pinBuffer;
+    pinBuffer = '';
+    updateDots();
+    pinMode = 'setup_confirm';
+    document.getElementById('pinSubtitle').textContent = 'Confirm your PIN';
+    document.getElementById('pinMsg').textContent = 'Enter your PIN again to confirm.';
+    document.getElementById('pinMsg').className = 'pin-msg';
+
+  } else if (pinMode === 'setup_confirm') {
+    if (pinBuffer !== setupPinFirst) {
+      updateDots('error');
+      document.getElementById('pinMsg').textContent = 'PINs don\'t match — try again.';
+      document.getElementById('pinMsg').className = 'pin-msg error';
+      setTimeout(() => { pinBuffer=''; updateDots(); pinMode='setup_pin';
+        document.getElementById('pinSubtitle').textContent='Choose your 4-digit PIN';
+        document.getElementById('pinMsg').textContent='Pick a PIN you\'ll remember.';
+        document.getElementById('pinMsg').className='pin-msg';
+      }, 1200);
+      return;
+    }
+    // PINs match — create account
+    document.getElementById('pinMsg').textContent = 'Setting up your account…';
+    document.getElementById('pinMsg').className = 'pin-msg';
+    const email    = hiddenEmail(setupEmail);
+    const password = pinBuffer + '_' + APP_KEY;
+    // Try sign up
+    let result = await sb.auth.signUp({ email, password });
+    if (result.error && result.error.message.includes('already registered')) {
+      result = await sb.auth.signInWithPassword({ email, password });
+    }
+    if (result.error) {
+      updateDots('error');
+      document.getElementById('pinMsg').textContent = result.error.message;
+      document.getElementById('pinMsg').className = 'pin-msg error';
+      pinBuffer=''; setTimeout(()=>updateDots(), 1200);
+      return;
+    }
+    // Save PIN setup
+    localStorage.setItem(PIN_STORE, JSON.stringify({ email: setupEmail, hint: pinBuffer.slice(0,1)+'***' }));
+    updateDots('success');
+    document.getElementById('pinMsg').textContent = 'PIN set! Signing you in…';
+    document.getElementById('pinMsg').className = 'pin-msg success';
+
+  } else if (pinMode === 'enter') {
+    // Sign in with PIN
+    const stored   = JSON.parse(localStorage.getItem(PIN_STORE)||'{}');
+    const email    = hiddenEmail(stored.email || '');
+    const password = pinBuffer + '_' + APP_KEY;
+    const result   = await sb.auth.signInWithPassword({ email, password });
+    if (result.error) {
+      updateDots('error');
+      document.getElementById('pinMsg').textContent = 'Incorrect PIN — try again.';
+      document.getElementById('pinMsg').className = 'pin-msg error';
+      pinBuffer='';
+      setTimeout(() => { updateDots(); document.getElementById('pinMsg').textContent=''; document.getElementById('pinMsg').className='pin-msg'; }, 1200);
+    } else {
+      updateDots('success');
+    }
+  }
+}
+
+async function sendReset() {
+  const stored = JSON.parse(localStorage.getItem(PIN_STORE)||'{}');
+  if (!stored.email) {
+    alert('No email on record. Please clear your browser data and set up again.');
+    return;
+  }
+  document.getElementById('pinMsg').textContent = `Sending reset to ${stored.email}…`;
+  document.getElementById('pinMsg').className = 'pin-msg';
+  // For PIN reset we send password reset to hidden email
+  const email = hiddenEmail(stored.email);
+  await sb.auth.resetPasswordForEmail(email);
+  document.getElementById('pinMsg').textContent = `Reset link sent to ${stored.email}`;
+  document.getElementById('pinMsg').className = 'pin-msg success';
+}
+
+function showApp() {
+  document.getElementById('authScreen').style.display  = 'none';
+  document.getElementById('appScreen').style.display   = 'block';
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function showAuth() {
+  document.getElementById('appScreen').style.display  = 'none';
+  document.getElementById('authScreen').style.display = 'block';
+  pinBuffer = ''; updateDots();
+  document.getElementById('pinMsg').textContent = '';
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+}
+
 boot();
+
 </script>
 </body>
 </html>
