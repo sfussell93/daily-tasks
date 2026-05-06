@@ -9,200 +9,67 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap');
 
   :root {
-    --bg: #f5f0e8;
-    --surface: #fffdf7;
-    --surface2: #f0ebe0;
-    --border: #d4ccb8;
-    --text: #2a2520;
-    --text-muted: #7a6f60;
-    --accent: #2d5a3d;
-    --accent-light: #e8f2eb;
-    --amber: #b85c00;
-    --red: #8b2020;
-    --blue: #1a3a5c;
-    --confidential: #4a1a6b;
-    --confidential-light: #f3eaf8;
-    --tomorrow: #1a4a4a;
-    --tomorrow-light: #e8f2f2;
-    --recurring: #5c3a00;
-    --recurring-light: #fdf5e8;
+    --bg: #f5f0e8; --surface: #fffdf7; --surface2: #f0ebe0; --border: #d4ccb8;
+    --text: #2a2520; --text-muted: #7a6f60; --accent: #2d5a3d; --accent-light: #e8f2eb;
+    --amber: #b85c00; --red: #8b2020; --blue: #1a3a5c;
+    --confidential: #4a1a6b; --confidential-light: #f3eaf8;
+    --tomorrow: #1a4a4a; --tomorrow-light: #e8f2f2;
+    --recurring: #5c3a00; --recurring-light: #fdf5e8;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
 
-  body {
-    font-family: 'DM Mono', monospace;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 24px;
+  /* ── Loading ── */
+  #loadingOverlay {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; font-size: 18px; color: var(--text-muted); z-index: 100;
   }
 
-  /* ── PIN Auth screen ── */
-  /* ── PIN Auth screen ── */
-  #authScreen {
-    max-width: 320px;
-    margin: 60px auto;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  .pin-header {
-    padding: 24px 24px 16px;
-    border-bottom: 1.5px solid var(--border);
-    background: var(--surface2);
-    text-align: center;
-  }
-
-  .pin-header h1 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
-  .pin-header p { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-
-  .pin-body { padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-
-  .pin-dots { display: flex; gap: 14px; justify-content: center; }
-
-  .pin-dot {
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 2px solid var(--border); background: white;
-    transition: all 0.15s;
-  }
-
-  .pin-dot.filled { background: var(--text); border-color: var(--text); }
-  .pin-dot.error  { background: var(--red);  border-color: var(--red); animation: shake 0.4s ease; }
-  .pin-dot.success{ background: var(--accent); border-color: var(--accent); }
-
-  @keyframes shake {
-    0%,100%{ transform: translateX(0); }
-    20%    { transform: translateX(-6px); }
-    40%    { transform: translateX(6px); }
-    60%    { transform: translateX(-4px); }
-    80%    { transform: translateX(4px); }
-  }
-
-  .pin-keypad {
-    display: grid;
-    grid-template-columns: repeat(3, 64px);
-    gap: 10px;
-  }
-
-  .pin-key {
-    width: 64px; height: 64px;
-    font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600;
-    border: 1.5px solid var(--border); border-radius: 6px;
-    background: white; cursor: pointer; color: var(--text);
-    transition: all 0.1s; display: flex; align-items: center; justify-content: center;
-    user-select: none;
-  }
-
+  /* ── PIN Screen ── */
+  #authScreen { max-width: 300px; margin: 60px auto; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .pin-header { padding: 20px 20px 14px; border-bottom: 1.5px solid var(--border); background: var(--surface2); text-align: center; }
+  .pin-header h1 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
+  .pin-header p { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .pin-body { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .pin-dots { display: flex; gap: 14px; }
+  .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); background: white; transition: all 0.15s; }
+  .pin-dot.filled  { background: var(--text); border-color: var(--text); }
+  .pin-dot.error   { background: var(--red); border-color: var(--red); animation: shake 0.4s ease; }
+  .pin-dot.success { background: var(--accent); border-color: var(--accent); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+  .pin-keypad { display: grid; grid-template-columns: repeat(3, 62px); gap: 8px; }
+  .pin-key { width: 62px; height: 62px; font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; border: 1.5px solid var(--border); border-radius: 6px; background: white; cursor: pointer; color: var(--text); transition: all 0.1s; display: flex; align-items: center; justify-content: center; user-select: none; }
   .pin-key:hover  { background: var(--surface2); border-color: var(--text); }
   .pin-key:active { background: var(--text); color: white; transform: scale(0.95); }
   .pin-key.del    { font-size: 16px; color: var(--text-muted); }
   .pin-key.empty  { border: none; background: transparent; cursor: default; pointer-events: none; }
-
   .pin-msg { font-size: 11px; text-align: center; min-height: 16px; color: var(--text-muted); }
-  .pin-msg.error { color: var(--red); }
+  .pin-msg.error   { color: var(--red); }
   .pin-msg.success { color: var(--accent); }
-
-  .pin-setup-email {
-    width: 100%; font-family: 'DM Mono', monospace; font-size: 12px;
-    padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 3px;
-    background: white; color: var(--text); outline: none;
-    transition: border-color 0.15s;
-  }
-  .pin-setup-email:focus { border-color: var(--text); }
-  .pin-setup-email::placeholder { color: var(--text-muted); }
-
-  .pin-setup-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); align-self: flex-start; }
-
+  .pin-email-input { width: 100%; font-family: 'DM Mono', monospace; font-size: 12px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 3px; background: white; color: var(--text); outline: none; }
+  .pin-email-input:focus { border-color: var(--text); }
+  .pin-continue-btn { width: 100%; font-family: 'DM Mono', monospace; font-size: 12px; padding: 10px; background: var(--text); color: white; border: none; border-radius: 3px; cursor: pointer; }
+  .pin-continue-btn:hover { opacity: 0.8; }
   .pin-link { font-size: 10px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
 
-
-  /* ── Main app ── */
+  /* ── App ── */
   #appScreen { display: none; }
-
-  header {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 28px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid var(--text);
-    flex-wrap: wrap;
-  }
-
-  header h1 {
-    font-family: 'Fraunces', serif;
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
-  }
-
-  .header-date {
-    font-size: 12px;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    flex: 1;
-  }
-
-  .signout-btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    background: white;
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: all 0.12s;
-  }
-
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 2px solid var(--text); flex-wrap: wrap; }
+  header h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
+  .header-date { font-size: 12px; color: var(--text-muted); letter-spacing: 0.05em; text-transform: uppercase; flex: 1; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 5px; }
+  .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error   { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .sync-label { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; }
+  .signout-btn { font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 3px; background: white; cursor: pointer; color: var(--text-muted); transition: all 0.12s; }
   .signout-btn:hover { border-color: var(--red); color: var(--red); }
 
-  /* Sync indicator */
-  .sync-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--accent);
-    display: inline-block;
-    margin-right: 5px;
-    transition: background 0.3s;
-  }
-
-  .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
-  .sync-dot.error { background: var(--red); }
-
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  .sync-label { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; }
-
-  /* Tab nav */
-  .tab-nav {
-    display: flex;
-    border: 1.5px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-    background: var(--surface2);
-    margin-bottom: 16px;
-  }
-
-  .tab-btn {
-    flex: 1;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    padding: 10px 4px;
-    border: none;
-    border-right: 1px solid var(--border);
-    background: transparent;
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: all 0.15s;
-  }
-
+  /* ── Tabs ── */
+  .tab-nav { display: flex; border: 1.5px solid var(--border); border-radius: 4px; overflow: hidden; background: var(--surface2); margin-bottom: 16px; }
+  .tab-btn { flex: 1; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; padding: 10px 4px; border: none; border-right: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
   .tab-btn:last-child { border-right: none; }
   .tab-btn:hover { background: var(--surface); color: var(--text); }
   .tab-btn.active { background: var(--surface); color: var(--text); }
@@ -210,275 +77,110 @@
   .tab-btn.active.tab-tomorrow { box-shadow: inset 0 -2px 0 var(--tomorrow); }
   .tab-btn.active.tab-recurring{ box-shadow: inset 0 -2px 0 var(--recurring); }
   .tab-btn.active.tab-backlog  { box-shadow: inset 0 -2px 0 var(--amber); }
-
   .tab-pane { display: none; flex-direction: column; gap: 16px; }
   .tab-pane.active { display: flex; }
 
-  .layout {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 20px;
-    align-items: start;
-  }
-
+  /* ── Layout ── */
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
   .left-col { min-width: 0; }
   .right-col { display: flex; flex-direction: column; gap: 16px; }
 
-  .panel {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 1.5px solid var(--border);
-    background: var(--surface2);
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .panel-title {
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
+  /* ── Panels ── */
+  .panel { background: var(--surface); border: 1.5px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1.5px solid var(--border); background: var(--surface2); gap: 8px; flex-wrap: wrap; }
+  .panel-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .dot-today     { background: var(--blue); }
-  .dot-new       { background: var(--red); }
-  .dot-backlog   { background: var(--amber); }
-  .dot-tomorrow  { background: var(--tomorrow); }
+  .dot-today { background: var(--blue); } .dot-new { background: var(--red); }
+  .dot-backlog { background: var(--amber); } .dot-tomorrow { background: var(--tomorrow); }
   .dot-recurring { background: var(--recurring); }
-
   .section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
   .section:last-child { border-bottom: none; }
 
+  /* ── Tasks ── */
   .task-list { display: flex; flex-direction: column; gap: 6px; }
-
-  .task-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 8px 10px;
-    border-radius: 3px;
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
-  }
-
+  .task-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 3px; border: 1px solid transparent; transition: all 0.15s ease; }
   .task-item:hover { background: var(--surface2); border-color: var(--border); }
   .task-item.done { opacity: 0.5; }
   .task-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
   .task-item.confidential { background: var(--confidential-light); border-color: #d4b8e8; }
   .task-item.confidential:hover { background: #ecdff5; }
-
-  .task-check {
-    width: 16px; height: 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 2px;
-    cursor: pointer;
-    flex-shrink: 0;
-    margin-top: 1px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
-    background: white;
-  }
-
+  .task-check { width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 2px; cursor: pointer; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: white; }
   .task-check:hover { border-color: var(--accent); }
   .task-check.checked { background: var(--accent); border-color: var(--accent); }
   .task-check.checked::after { content: '✓'; color: white; font-size: 10px; line-height: 1; }
-
   .task-text { font-size: 13px; line-height: 1.4; flex: 1; word-break: break-word; }
-
-  .task-tag {
-    font-size: 9px; font-weight: 500; text-transform: uppercase;
-    letter-spacing: 0.08em; padding: 2px 5px; border-radius: 2px;
-    flex-shrink: 0; margin-top: 2px;
-    background: var(--confidential-light); color: var(--confidential); border: 1px solid #c9a8e0;
-  }
-
+  .task-tag { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 5px; border-radius: 2px; flex-shrink: 0; margin-top: 2px; background: var(--confidential-light); color: var(--confidential); border: 1px solid #c9a8e0; }
   .task-actions { display: flex; gap: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
   .task-item:hover .task-actions { opacity: 1; }
-
-  .task-btn {
-    font-size: 10px; padding: 2px 5px;
-    border: 1px solid var(--border); border-radius: 2px;
-    background: white; cursor: pointer; color: var(--text-muted);
-    font-family: inherit; transition: all 0.12s; white-space: nowrap;
-  }
-
+  .task-btn { font-size: 10px; padding: 2px 5px; border: 1px solid var(--border); border-radius: 2px; background: white; cursor: pointer; color: var(--text-muted); font-family: inherit; transition: all 0.12s; white-space: nowrap; }
   .task-btn:hover { border-color: var(--text); color: var(--text); }
   .task-btn.danger:hover { border-color: var(--red); color: var(--red); }
   .task-btn.promote:hover { border-color: var(--accent); color: var(--accent); }
 
-  .recurring-item {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px; border-radius: 3px;
-    border: 1px solid #e0cfa0;
-    background: var(--recurring-light);
-  }
-
-  .rec-btn {
-    font-size: 10px; padding: 3px 7px;
-    border: 1.5px solid; border-radius: 2px;
-    background: white; cursor: pointer;
-    font-family: inherit; font-weight: 500;
-    transition: all 0.12s; white-space: nowrap; flex-shrink: 0;
-  }
-
+  /* ── Recurring ── */
+  .recurring-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 3px; border: 1px solid #e0cfa0; background: var(--recurring-light); }
+  .rec-btn { font-size: 10px; padding: 3px 7px; border: 1.5px solid; border-radius: 2px; background: white; cursor: pointer; font-family: inherit; font-weight: 500; transition: all 0.12s; white-space: nowrap; flex-shrink: 0; }
   .rec-btn.to-today { border-color: var(--blue); color: var(--blue); }
   .rec-btn.to-today:hover { background: var(--blue); color: white; }
   .rec-btn.to-tmrw  { border-color: var(--tomorrow); color: var(--tomorrow); }
   .rec-btn.to-tmrw:hover { background: var(--tomorrow); color: white; }
   .rec-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
 
+  /* ── Add area ── */
   .add-area { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
-
-  .add-input {
-    flex: 1; font-family: 'DM Mono', monospace; font-size: 12px;
-    padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 3px;
-    background: white; color: var(--text); outline: none;
-    transition: border-color 0.15s; min-width: 0;
-  }
-
+  .add-input { flex: 1; font-family: 'DM Mono', monospace; font-size: 12px; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 3px; background: white; color: var(--text); outline: none; transition: border-color 0.15s; min-width: 0; }
   .add-input:focus { border-color: var(--text); }
   .add-input::placeholder { color: var(--text-muted); }
-
-  .add-btn {
-    font-family: 'DM Mono', monospace; font-size: 11px;
-    padding: 7px 12px; background: var(--text); color: white;
-    border: none; border-radius: 3px; cursor: pointer;
-    transition: opacity 0.15s; white-space: nowrap;
-  }
-
+  .add-btn { font-family: 'DM Mono', monospace; font-size: 11px; padding: 7px 12px; background: var(--text); color: white; border: none; border-radius: 3px; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
   .add-btn:hover { opacity: 0.8; }
-
-  .conf-label {
-    display: flex; align-items: center; gap: 4px;
-    font-size: 11px; color: var(--text-muted);
-    cursor: pointer; padding: 4px 0; user-select: none; flex-shrink: 0;
-  }
-
+  .conf-label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); cursor: pointer; padding: 4px 0; user-select: none; flex-shrink: 0; }
   .conf-label input { cursor: pointer; accent-color: var(--confidential); }
 
+  /* ── Right col ── */
   .post-content { padding: 14px 16px; }
-
-  .post-box {
-    font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.7;
-    background: var(--surface2); border: 1.5px solid var(--border);
-    border-radius: 3px; padding: 12px; min-height: 70px;
-    white-space: pre-wrap; word-break: break-word; color: var(--text);
-    max-height: 200px; overflow-y: auto;
-  }
-
-  .copy-btn {
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    margin-top: 10px; font-family: 'DM Mono', monospace; font-size: 11px;
-    padding: 8px 14px; background: var(--text); color: white;
-    border: none; border-radius: 3px; cursor: pointer;
-    transition: all 0.15s; width: 100%;
-  }
-
+  .post-box { font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.7; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 3px; padding: 12px; min-height: 70px; white-space: pre-wrap; word-break: break-word; color: var(--text); max-height: 200px; overflow-y: auto; }
+  .copy-btn { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px 14px; background: var(--text); color: white; border: none; border-radius: 3px; cursor: pointer; transition: all 0.15s; width: 100%; }
   .copy-btn:hover { opacity: 0.8; }
   .copy-btn.copied { background: var(--accent) !important; }
-
-  .start-btn {
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    margin-top: 8px; font-family: 'DM Mono', monospace; font-size: 11px;
-    padding: 8px 14px; background: var(--tomorrow); color: white;
-    border: none; border-radius: 3px; cursor: pointer;
-    transition: opacity 0.15s; width: 100%;
-  }
-
+  .start-btn { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px 14px; background: var(--tomorrow); color: white; border: none; border-radius: 3px; cursor: pointer; transition: opacity 0.15s; width: 100%; }
   .start-btn:hover { opacity: 0.85; }
-
   .stats-row { display: flex; padding: 12px 16px; background: var(--surface2); }
   .stat { flex: 1; text-align: center; }
-
-  .stat-num {
-    font-size: 20px; font-family: 'Fraunces', serif; font-weight: 600;
-    line-height: 1; margin-bottom: 2px;
-  }
-
+  .stat-num { font-size: 20px; font-family: 'Fraunces', serif; font-weight: 600; line-height: 1; margin-bottom: 2px; }
   .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
-  .c-done { color: var(--accent); }
-  .c-today { color: var(--blue); }
-  .c-tmrw { color: var(--tomorrow); }
-  .c-backlog { color: var(--amber); }
-
+  .c-done { color: var(--accent); } .c-today { color: var(--blue); }
+  .c-tmrw { color: var(--tomorrow); } .c-backlog { color: var(--amber); }
   .empty-state { font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 0; font-style: italic; }
-
   .notice { font-size: 10px; padding: 8px 10px; border-radius: 3px; line-height: 1.55; margin-top: 10px; }
   .n-conf { background: var(--confidential-light); color: var(--confidential); border: 1px solid #d4b8e8; }
   .n-tmrw { background: var(--tomorrow-light); color: var(--tomorrow); border: 1px solid #b0cfcf; }
   .n-rec  { background: var(--recurring-light); color: var(--recurring); border: 1px solid #d4b870; }
-
   .header-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-
-  .hdr-btn {
-    font-family: 'DM Mono', monospace; font-size: 10px;
-    padding: 3px 8px; border: 1px solid var(--border);
-    border-radius: 2px; background: white; cursor: pointer;
-    color: var(--text-muted); transition: all 0.12s; white-space: nowrap;
-  }
-
+  .hdr-btn { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 2px; background: white; cursor: pointer; color: var(--text-muted); transition: all 0.12s; white-space: nowrap; }
   .hdr-btn:hover { border-color: var(--text); color: var(--text); }
 
-  /* Loading overlay */
-  #loadingOverlay {
-    position: fixed; inset: 0;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Fraunces', serif;
-    font-size: 18px; color: var(--text-muted);
-    z-index: 100;
-  }
-
-  @media (max-width: 820px) {
-    body { padding: 16px; }
-    .layout { grid-template-columns: 1fr; }
-    .right-col { order: -1; }
-  }
+  @media (max-width: 820px) { body { padding: 16px; } .layout { grid-template-columns: 1fr; } .right-col { order: -1; } }
 </style>
 </head>
 <body>
 
-<!-- Loading -->
 <div id="loadingOverlay">Loading…</div>
 
-<!-- PIN Auth screen -->
+<!-- PIN screen -->
 <div id="authScreen">
   <div class="pin-header">
-    <h1 id="pinTitle">Daily Tasks</h1>
+    <h1>Daily Tasks</h1>
     <p id="pinSubtitle">Enter your PIN</p>
   </div>
-  <div class="pin-body">
-    <!-- Setup email field (hidden until first setup) -->
-    <div id="emailSetupRow" style="display:none;width:100%;display:none;flex-direction:column;gap:6px;">
-      <span class="pin-setup-label">Your email (for PIN reset only)</span>
-      <input class="pin-setup-email" type="email" id="setupEmail" placeholder="you@example.com">
-    </div>
-
+  <div class="pin-body" id="pinBody">
     <div class="pin-dots">
       <div class="pin-dot" id="pd0"></div>
       <div class="pin-dot" id="pd1"></div>
       <div class="pin-dot" id="pd2"></div>
       <div class="pin-dot" id="pd3"></div>
     </div>
-
     <div class="pin-msg" id="pinMsg"></div>
-
-    <div class="pin-keypad">
+    <div class="pin-keypad" id="pinKeypad">
       <button class="pin-key" onclick="pinPress('1')">1</button>
       <button class="pin-key" onclick="pinPress('2')">2</button>
       <button class="pin-key" onclick="pinPress('3')">3</button>
@@ -492,13 +194,11 @@
       <button class="pin-key" onclick="pinPress('0')">0</button>
       <button class="pin-key del" onclick="pinDel()">⌫</button>
     </div>
-
     <span class="pin-link" id="resetLink" onclick="sendReset()" style="display:none;">Forgot PIN? Send reset email</span>
   </div>
 </div>
 
-
-<!-- Main app -->
+<!-- App -->
 <div id="appScreen">
   <header>
     <h1>Daily Tasks</h1>
@@ -509,7 +209,6 @@
 
   <div class="layout">
     <div class="left-col">
-
       <div class="tab-nav">
         <button class="tab-btn tab-today active"    onclick="switchTab('today')">☀️ Today</button>
         <button class="tab-btn tab-tomorrow"        onclick="switchTab('tomorrow')">⏭️ Tomorrow</button>
@@ -537,9 +236,7 @@
           </div>
         </div>
         <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title"><span class="dot dot-new"></span>Added during the day</span>
-          </div>
+          <div class="panel-header"><span class="panel-title"><span class="dot dot-new"></span>Added during the day</span></div>
           <div class="section">
             <div class="task-list" id="newList"></div>
             <div class="add-area">
@@ -568,9 +265,7 @@
               <label class="conf-label" title="Confidential"><input type="checkbox" id="tomorrowConf"> 🔒</label>
               <button class="add-btn" onclick="addTask('tomorrow')">+ Add</button>
             </div>
-            <div class="notice n-tmrw" style="margin-top:12px;">
-              ⏭️ Completely separate from today. Hit <strong>Start Tomorrow</strong> on the right when your new day begins.
-            </div>
+            <div class="notice n-tmrw" style="margin-top:12px;">⏭️ Completely separate from today. Hit <strong>Start Tomorrow</strong> on the right when your new day begins.</div>
           </div>
         </div>
       </div>
@@ -578,18 +273,14 @@
       <!-- RECURRING -->
       <div class="tab-pane" id="pane-recurring">
         <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title"><span class="dot dot-recurring"></span>Regular / recurring tasks</span>
-          </div>
+          <div class="panel-header"><span class="panel-title"><span class="dot dot-recurring"></span>Regular / recurring tasks</span></div>
           <div class="section">
             <div class="task-list" id="recurringList"></div>
             <div class="add-area" style="margin-top:12px;">
               <input class="add-input" id="recurringInput" placeholder="Add a regular task to your library…" onkeydown="if(event.key==='Enter') addRecurring()">
               <button class="add-btn" onclick="addRecurring()">+ Add</button>
             </div>
-            <div class="notice n-rec">
-              🔁 Click <strong>→ Today</strong> or <strong>→ Tomorrow</strong> to copy a task. Tasks stay in the library permanently.
-            </div>
+            <div class="notice n-rec">🔁 Click <strong>→ Today</strong> or <strong>→ Tomorrow</strong> to copy a task. Tasks stay in the library permanently.</div>
           </div>
         </div>
       </div>
@@ -608,18 +299,14 @@
               <label class="conf-label" title="Confidential"><input type="checkbox" id="backlogConf"> 🔒</label>
               <button class="add-btn" onclick="addTask('backlog')">+ Add</button>
             </div>
-            <div class="notice n-conf" style="margin-top:12px;">
-              🔒 Tasks marked confidential never appear in any Teams post.
-            </div>
+            <div class="notice n-conf" style="margin-top:12px;">🔒 Tasks marked confidential never appear in any Teams post.</div>
           </div>
         </div>
       </div>
-
-    </div><!-- /left-col -->
+    </div>
 
     <!-- RIGHT COL -->
     <div class="right-col">
-
       <div class="panel">
         <div class="stats-row">
           <div class="stat"><div class="stat-num c-today"  id="statToday">0</div><div class="stat-label">Today</div></div>
@@ -628,7 +315,6 @@
           <div class="stat"><div class="stat-num c-backlog" id="statBacklog">0</div><div class="stat-label">Backlog</div></div>
         </div>
       </div>
-
       <div class="panel">
         <div class="panel-header"><span class="panel-title">☀️ Morning Stand-up</span></div>
         <div class="post-content">
@@ -636,7 +322,6 @@
           <button class="copy-btn" id="morningCopyBtn" onclick="copyPost('morning')">Copy for Teams</button>
         </div>
       </div>
-
       <div class="panel">
         <div class="panel-header"><span class="panel-title">🌙 End of Day</span></div>
         <div class="post-content">
@@ -644,7 +329,6 @@
           <button class="copy-btn" id="eodCopyBtn" onclick="copyPost('eod')">Copy for Teams</button>
         </div>
       </div>
-
       <div class="panel" style="border-color:#b0cfcf;">
         <div class="panel-header" style="background:#edf5f5;">
           <span class="panel-title" style="color:var(--tomorrow);">⏭️ Tomorrow's Stand-up (draft)</span>
@@ -655,220 +339,173 @@
           <button class="start-btn" onclick="startTomorrow()">🌅 Start Tomorrow — move to Today</button>
         </div>
       </div>
-
     </div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-// CONFIGURATION — fill these in after Supabase setup
-// ═══════════════════════════════════════════════
-const SUPABASE_URL = 'https://yqeohnvtdxjvufskusff.supabase.co';
+// ══════════════════════════════════════════════
+const SUPABASE_URL      = 'https://yqeohnvtdxjvufskusff.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZW9obnZ0ZHhqdnVmc2t1c2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ1NTMsImV4cCI6MjA5MzU3MDU1M30.Wh_MD8rJ5z0dfdfj_v8wZjt3W0IDIawzxov0muRfTEo';
-// ═══════════════════════════════════════════════
+const APP_KEY           = 'dailytasks_v1';
+const PIN_STORE         = 'dtm_pin_v1';
+// ══════════════════════════════════════════════
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── State ──────────────────────────────────────
-let tasks     = [];
-let recurring = [];
+let tasks       = [];
+let recurring   = [];
 let currentUser = null;
-let authMode = 'signin'; // or 'signup'
-
-// ── Sync indicator ─────────────────────────────
-function setSyncState(state) {
-  const dot   = document.getElementById('syncDot');
-  const label = document.getElementById('syncLabel');
-  dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '');
-  label.textContent = state === 'syncing' ? 'Saving…' : state === 'error' ? 'Error' : 'Synced';
-}
 
 // ── Date ───────────────────────────────────────
-const now = new Date();
 document.getElementById('dateDisplay').textContent =
-  now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-// ── PIN Auth Logic ─────────────────────────────
-// Uses a deterministic hidden email from a fixed app key + PIN as password
-// PIN is also stored in localStorage so re-entry on same device is seamless
+// ── Sync indicator ─────────────────────────────
+function setSyncState(s) {
+  document.getElementById('syncDot').className   = 'sync-dot' + (s==='syncing'?' syncing':s==='error'?' error':'');
+  document.getElementById('syncLabel').textContent = s==='syncing'?'Saving…':s==='error'?'Error':'Synced';
+}
 
-const APP_KEY   = 'dailytasks_v1'; // unique per app — change for meeting tracker
-const PIN_STORE = 'dtm_pin_set';
-
-let pinBuffer  = '';
-let pinMode    = 'enter'; // 'setup_email' | 'setup_pin' | 'setup_confirm' | 'enter'
-let setupEmail = '';
+// ══════════════════════════════════════════════
+// PIN AUTH
+// ══════════════════════════════════════════════
+let pinBuffer     = '';
+let pinMode       = 'enter';
+let setupEmail    = '';
 let setupPinFirst = '';
 
 function hiddenEmail(email) {
-  // Derive a deterministic hidden email from user's real email
   const encoded = btoa(email + APP_KEY).replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,20);
-  return `${encoded}@dtm-user.com`;
-}
-
-async function boot() {
-  const timeout = setTimeout(() => {
-    document.getElementById('loadingOverlay').style.display = 'none';
-    initPinScreen();
-  }, 5000);
-
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    clearTimeout(timeout);
-    if (session?.user) {
-      currentUser = session.user;
-      showApp();
-      await loadData();
-    } else {
-      document.getElementById('loadingOverlay').style.display = 'none';
-      initPinScreen();
-    }
-  } catch(e) {
-    clearTimeout(timeout);
-    document.getElementById('loadingOverlay').style.display = 'none';
-    initPinScreen();
-  }
-
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      currentUser = session.user;
-      showApp();
-      await loadData();
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null;
-      showAuth();
-    }
-  });
+  return encoded + '@dtm-pin.com';
 }
 
 function initPinScreen() {
+  document.getElementById('authScreen').style.display = 'block';
   const stored = localStorage.getItem(PIN_STORE);
   if (!stored) {
-    // First time — need to set up
+    // First time — collect email then PIN
     pinMode = 'setup_email';
-    document.getElementById('pinSubtitle').textContent = 'First time setup — enter your email';
-    document.getElementById('emailSetupRow').style.display = 'flex';
-    document.getElementById('pinMsg').textContent = 'Your email is only used to reset your PIN if you forget it.';
-    document.getElementById('pinMsg').className = 'pin-msg';
-    // Show confirm button instead of keypad for email step
-    document.querySelector('.pin-keypad').style.display = 'none';
+    document.getElementById('pinSubtitle').textContent = 'First time — enter your email';
+    document.getElementById('pinMsg').textContent = 'Used only if you ever need to reset your PIN.';
+    document.getElementById('pinKeypad').style.display = 'none';
     document.querySelector('.pin-dots').style.display = 'none';
-    // Add a continue button
-    const btn = document.createElement('button');
-    btn.id = 'emailContinueBtn';
-    btn.className = 'add-btn';
-    btn.style.cssText = 'width:100%;padding:12px;font-size:13px;';
-    btn.textContent = 'Continue →';
-    btn.onclick = confirmEmail;
-    document.querySelector('.pin-body').appendChild(btn);
+    // Insert email input + continue button
+    const pinBody = document.getElementById('pinBody');
+    const emailDiv = document.createElement('div');
+    emailDiv.id = 'emailSetupDiv';
+    emailDiv.style.cssText = 'width:100%;display:flex;flex-direction:column;gap:8px;';
+    emailDiv.innerHTML = `<input class="pin-email-input" type="email" id="setupEmailInput" placeholder="you@example.com">
+      <button class="pin-continue-btn" onclick="confirmSetupEmail()">Continue →</button>`;
+    pinBody.insertBefore(emailDiv, document.getElementById('pinMsg'));
   } else {
     pinMode = 'enter';
-    document.getElementById('pinSubtitle').textContent = 'Enter your 4-digit PIN';
+    document.getElementById('pinSubtitle').textContent = 'Enter your PIN';
     document.getElementById('resetLink').style.display = 'inline';
   }
-  document.getElementById('authScreen').style.display = 'block';
 }
 
-function confirmEmail() {
-  const email = document.getElementById('setupEmail').value.trim();
+function confirmSetupEmail() {
+  const email = document.getElementById('setupEmailInput').value.trim();
   if (!email || !email.includes('@')) {
     document.getElementById('pinMsg').textContent = 'Please enter a valid email.';
     document.getElementById('pinMsg').className = 'pin-msg error';
     return;
   }
   setupEmail = email;
-  pinMode = 'setup_pin';
-  document.getElementById('pinSubtitle').textContent = 'Choose your 4-digit PIN';
-  document.getElementById('pinMsg').textContent = 'Pick a PIN you\'ll remember.';
-  document.getElementById('pinMsg').className = 'pin-msg';
-  document.getElementById('emailSetupRow').style.display = 'none';
-  document.getElementById('emailContinueBtn').remove();
-  document.querySelector('.pin-keypad').style.display = 'grid';
+  document.getElementById('emailSetupDiv').remove();
   document.querySelector('.pin-dots').style.display = 'flex';
+  document.getElementById('pinKeypad').style.display = 'grid';
+  document.getElementById('pinMsg').textContent = 'Choose a 4-digit PIN.';
+  document.getElementById('pinMsg').className = 'pin-msg';
+  document.getElementById('pinSubtitle').textContent = 'Choose your PIN';
+  pinMode = 'setup_pin';
 }
 
 function pinPress(digit) {
   if (pinBuffer.length >= 4) return;
   pinBuffer += digit;
   updateDots();
-  if (pinBuffer.length === 4) {
-    setTimeout(() => handlePinComplete(), 120);
-  }
+  if (pinBuffer.length === 4) setTimeout(handlePinComplete, 120);
 }
 
 function pinDel() {
-  if (pinBuffer.length > 0) {
-    pinBuffer = pinBuffer.slice(0, -1);
-    updateDots();
-  }
+  if (pinBuffer.length > 0) { pinBuffer = pinBuffer.slice(0,-1); updateDots(); }
 }
 
 function updateDots(state) {
   for (let i = 0; i < 4; i++) {
-    const dot = document.getElementById('pd' + i);
-    dot.className = 'pin-dot';
-    if (state === 'error')   dot.classList.add('error');
-    else if (state === 'success') dot.classList.add('success');
-    else if (i < pinBuffer.length) dot.classList.add('filled');
+    const d = document.getElementById('pd' + i);
+    d.className = 'pin-dot';
+    if      (state === 'error')   d.classList.add('error');
+    else if (state === 'success') d.classList.add('success');
+    else if (i < pinBuffer.length) d.classList.add('filled');
   }
 }
 
 async function handlePinComplete() {
   if (pinMode === 'setup_pin') {
-    setupPinFirst = pinBuffer;
-    pinBuffer = '';
-    updateDots();
+    setupPinFirst = pinBuffer; pinBuffer = ''; updateDots();
     pinMode = 'setup_confirm';
     document.getElementById('pinSubtitle').textContent = 'Confirm your PIN';
-    document.getElementById('pinMsg').textContent = 'Enter your PIN again to confirm.';
+    document.getElementById('pinMsg').textContent = 'Enter your PIN again.';
     document.getElementById('pinMsg').className = 'pin-msg';
+    return;
+  }
 
-  } else if (pinMode === 'setup_confirm') {
+  if (pinMode === 'setup_confirm') {
     if (pinBuffer !== setupPinFirst) {
       updateDots('error');
-      document.getElementById('pinMsg').textContent = 'PINs don\'t match — try again.';
+      document.getElementById('pinMsg').textContent = "PINs don't match — try again.";
       document.getElementById('pinMsg').className = 'pin-msg error';
-      setTimeout(() => { pinBuffer=''; updateDots(); pinMode='setup_pin';
-        document.getElementById('pinSubtitle').textContent='Choose your 4-digit PIN';
-        document.getElementById('pinMsg').textContent='Pick a PIN you\'ll remember.';
+      setTimeout(() => {
+        pinBuffer=''; updateDots(); pinMode='setup_pin';
+        document.getElementById('pinSubtitle').textContent='Choose your PIN';
+        document.getElementById('pinMsg').textContent='Choose a 4-digit PIN.';
         document.getElementById('pinMsg').className='pin-msg';
       }, 1200);
       return;
     }
-    // PINs match — create account
-    document.getElementById('pinMsg').textContent = 'Setting up your account…';
+    // Create account
+    document.getElementById('pinMsg').textContent = 'Setting up…';
     document.getElementById('pinMsg').className = 'pin-msg';
     const email    = hiddenEmail(setupEmail);
     const password = pinBuffer + '_' + APP_KEY;
-    // Try sign up
-    let result = await sb.auth.signUp({ email, password });
-    if (result.error && result.error.message.includes('already registered')) {
-      result = await sb.auth.signInWithPassword({ email, password });
+    let res = await sb.auth.signUp({ email, password });
+    if (res.error) {
+      // Already exists — try sign in
+      res = await sb.auth.signInWithPassword({ email, password });
     }
-    if (result.error) {
+    if (res.error) {
       updateDots('error');
-      document.getElementById('pinMsg').textContent = result.error.message;
+      document.getElementById('pinMsg').textContent = res.error.message;
       document.getElementById('pinMsg').className = 'pin-msg error';
       pinBuffer=''; setTimeout(()=>updateDots(), 1200);
       return;
     }
-    // Save PIN setup
-    localStorage.setItem(PIN_STORE, JSON.stringify({ email: setupEmail, hint: pinBuffer.slice(0,1)+'***' }));
+    localStorage.setItem(PIN_STORE, JSON.stringify({ email: setupEmail }));
     updateDots('success');
-    document.getElementById('pinMsg').textContent = 'PIN set! Signing you in…';
+    document.getElementById('pinMsg').textContent = 'PIN set! Loading…';
     document.getElementById('pinMsg').className = 'pin-msg success';
+    return;
+  }
 
-  } else if (pinMode === 'enter') {
-    // Sign in with PIN
-    const stored   = JSON.parse(localStorage.getItem(PIN_STORE)||'{}');
-    const email    = hiddenEmail(stored.email || '');
+  if (pinMode === 'enter') {
+    const stored = JSON.parse(localStorage.getItem(PIN_STORE) || '{}');
+    if (!stored.email) {
+      // No stored setup — restart setup
+      localStorage.removeItem(PIN_STORE);
+      location.reload();
+      return;
+    }
+    const email    = hiddenEmail(stored.email);
     const password = pinBuffer + '_' + APP_KEY;
-    const result   = await sb.auth.signInWithPassword({ email, password });
-    if (result.error) {
+    const res = await sb.auth.signInWithPassword({ email, password });
+    if (res.error) {
       updateDots('error');
-      document.getElementById('pinMsg').textContent = 'Incorrect PIN — try again.';
+      document.getElementById('pinMsg').textContent = 'Incorrect PIN.';
       document.getElementById('pinMsg').className = 'pin-msg error';
       pinBuffer='';
       setTimeout(() => { updateDots(); document.getElementById('pinMsg').textContent=''; document.getElementById('pinMsg').className='pin-msg'; }, 1200);
@@ -880,38 +517,319 @@ async function handlePinComplete() {
 
 async function sendReset() {
   const stored = JSON.parse(localStorage.getItem(PIN_STORE)||'{}');
-  if (!stored.email) {
-    alert('No email on record. Please clear your browser data and set up again.');
-    return;
-  }
-  document.getElementById('pinMsg').textContent = `Sending reset to ${stored.email}…`;
-  document.getElementById('pinMsg').className = 'pin-msg';
-  // For PIN reset we send password reset to hidden email
+  if (!stored.email) { alert('No email on record.'); return; }
   const email = hiddenEmail(stored.email);
   await sb.auth.resetPasswordForEmail(email);
-  document.getElementById('pinMsg').textContent = `Reset link sent to ${stored.email}`;
+  document.getElementById('pinMsg').textContent = 'Reset link sent to your email.';
   document.getElementById('pinMsg').className = 'pin-msg success';
 }
 
-function showApp() {
-  document.getElementById('authScreen').style.display  = 'none';
-  document.getElementById('appScreen').style.display   = 'block';
-  document.getElementById('loadingOverlay').style.display = 'none';
+// ══════════════════════════════════════════════
+// DATA LAYER
+// ══════════════════════════════════════════════
+async function loadData() {
+  const [tRes, rRes] = await Promise.all([
+    sb.from('tasks').select('*').eq('user_id', currentUser.id).order('created_at'),
+    sb.from('recurring').select('*').eq('user_id', currentUser.id).order('created_at')
+  ]);
+  tasks     = tRes.data || [];
+  recurring = rRes.data || [];
+  render();
 }
 
-function showAuth() {
-  document.getElementById('appScreen').style.display  = 'none';
-  document.getElementById('authScreen').style.display = 'block';
-  pinBuffer = ''; updateDots();
-  document.getElementById('pinMsg').textContent = '';
+async function dbInsertTask(t) {
+  setSyncState('syncing');
+  const { data, error } = await sb.from('tasks').insert({ user_id: currentUser.id, text: t.text, bucket: t.bucket, done: t.done, confidential: t.confidential }).select().single();
+  setSyncState(error ? 'error' : 'synced');
+  return data;
 }
 
+async function dbUpdateTask(id, changes) {
+  setSyncState('syncing');
+  const { error } = await sb.from('tasks').update(changes).eq('id', id).eq('user_id', currentUser.id);
+  setSyncState(error ? 'error' : 'synced');
+}
+
+async function dbDeleteTask(id) {
+  setSyncState('syncing');
+  const { error } = await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+  setSyncState(error ? 'error' : 'synced');
+}
+
+async function dbInsertRecurring(text) {
+  setSyncState('syncing');
+  const { data, error } = await sb.from('recurring').insert({ user_id: currentUser.id, text }).select().single();
+  setSyncState(error ? 'error' : 'synced');
+  return data;
+}
+
+async function dbDeleteRecurring(id) {
+  setSyncState('syncing');
+  const { error } = await sb.from('recurring').delete().eq('id', id).eq('user_id', currentUser.id);
+  setSyncState(error ? 'error' : 'synced');
+}
+
+// ══════════════════════════════════════════════
+// TASK ACTIONS
+// ══════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + tab).classList.add('active');
+  document.querySelector('.tab-' + tab).classList.add('active');
+}
+
+async function addTask(bucket) {
+  const input  = document.getElementById(bucket + 'Input');
+  const confEl = document.getElementById(bucket + 'Conf');
+  const text   = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const isConf = confEl ? confEl.checked : false;
+  if (confEl) confEl.checked = false;
+  const tempId = 'tmp_' + Date.now();
+  tasks.push({ id: tempId, text, bucket, done: false, confidential: isConf });
+  render();
+  const saved = await dbInsertTask({ text, bucket, done: false, confidential: isConf });
+  if (saved) { tasks = tasks.filter(t => t.id !== tempId); tasks.push(saved); render(); }
+}
+
+async function addRecurring() {
+  const input = document.getElementById('recurringInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const tempId = 'tmp_' + Date.now();
+  recurring.push({ id: tempId, text });
+  render();
+  const saved = await dbInsertRecurring(text);
+  if (saved) { recurring = recurring.filter(r => r.id !== tempId); recurring.push(saved); render(); }
+}
+
+async function copyRecurringTo(rid, bucket) {
+  const r = recurring.find(x => x.id === rid);
+  if (!r) return;
+  const btn = document.getElementById(`rb-${rid}-${bucket}`);
+  if (btn) { btn.textContent = '✓ Done'; btn.disabled = true; }
+  const tempId = 'tmp_' + Date.now();
+  tasks.push({ id: tempId, text: r.text, bucket, done: false, confidential: false });
+  render();
+  const saved = await dbInsertTask({ text: r.text, bucket, done: false, confidential: false });
+  if (saved) { tasks = tasks.filter(t => t.id !== tempId); tasks.push(saved); render(); }
+  if (btn) setTimeout(() => { btn.textContent = bucket === 'today' ? '→ Today' : '→ Tomorrow'; btn.disabled = false; }, 1600);
+}
+
+async function deleteRecurring(rid) {
+  if (!confirm('Remove from library?')) return;
+  recurring = recurring.filter(x => x.id !== rid);
+  render();
+  await dbDeleteRecurring(rid);
+}
+
+async function toggleDone(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.done = !t.done; render();
+  await dbUpdateTask(id, { done: t.done });
+}
+
+async function moveTask(id, bucket) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.bucket = bucket; t.done = false; render();
+  await dbUpdateTask(id, { bucket, done: false });
+}
+
+async function deleteTask(id) {
+  tasks = tasks.filter(x => x.id !== id); render();
+  await dbDeleteTask(id);
+}
+
+function pullFromBacklog(dest) {
+  const bl = tasks.filter(t => t.bucket === 'backlog');
+  if (!bl.length) { alert('Backlog is empty!'); return; }
+  const list = bl.map((t,i) => `${i+1}. ${t.confidential?'🔒 ':''}${t.text}`).join('\n');
+  const ans  = prompt(`Pull into ${dest}:\n\n${list}\n\nEnter number:`);
+  if (!ans) return;
+  const idx = parseInt(ans) - 1;
+  if (idx >= 0 && idx < bl.length) moveTask(bl[idx].id, dest);
+}
+
+async function carryForward() {
+  const unfinished = tasks.filter(t => t.bucket === 'today' && !t.done);
+  if (!unfinished.length) { alert('No unfinished tasks today!'); return; }
+  for (const t of unfinished) {
+    const tempId = 'tmp_' + Date.now() + Math.random();
+    tasks.push({ id: tempId, text: t.text, bucket: 'tomorrow', done: false, confidential: t.confidential });
+    render();
+    const saved = await dbInsertTask({ text: t.text, bucket: 'tomorrow', done: false, confidential: t.confidential });
+    if (saved) { tasks = tasks.filter(x => x.id !== tempId); tasks.push(saved); }
+  }
+  render(); switchTab('tomorrow');
+}
+
+async function startTomorrow() {
+  const tmrw = tasks.filter(t => t.bucket === 'tomorrow');
+  if (!tmrw.length && !confirm('No tasks planned for tomorrow yet. Start fresh day anyway?')) return;
+  const toDelete = tasks.filter(t => t.done || t.bucket === 'new').map(t => t.id);
+  tasks = tasks.filter(t => !t.done && t.bucket !== 'new');
+  tasks.filter(t => t.bucket === 'today').forEach(t => t.done = false);
+  tasks.filter(t => t.bucket === 'tomorrow').forEach(t => { t.bucket = 'today'; t.done = false; });
+  render(); switchTab('today');
+  setSyncState('syncing');
+  for (const id of toDelete) {
+    if (!String(id).startsWith('tmp_')) await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+  }
+  for (const t of tasks.filter(x => x.bucket === 'today')) {
+    if (!String(t.id).startsWith('tmp_')) await dbUpdateTask(t.id, { bucket: 'today', done: false });
+  }
+  setSyncState('synced');
+}
+
+// ══════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderList(containerId, bucket) {
+  const el   = document.getElementById(containerId);
+  const list = tasks.filter(t => t.bucket === bucket);
+  if (!list.length) { el.innerHTML = '<div class="empty-state">No tasks yet</div>'; return; }
+  el.innerHTML = list.map(t => {
+    let moveBtns = '';
+    if (bucket==='today'||bucket==='new') {
+      moveBtns = `<button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">→ tmrw</button><button class="task-btn" onclick="moveTask('${t.id}','backlog')">→ backlog</button>`;
+    } else if (bucket==='tomorrow') {
+      moveBtns = `<button class="task-btn promote" onclick="moveTask('${t.id}','today')">→ today</button><button class="task-btn" onclick="moveTask('${t.id}','backlog')">→ backlog</button>`;
+    } else if (bucket==='backlog') {
+      moveBtns = `<button class="task-btn promote" onclick="moveTask('${t.id}','today')">→ today</button><button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">→ tmrw</button>`;
+    }
+    return `<div class="task-item${t.done?' done':''}${t.confidential?' confidential':''}">
+      <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')"></div>
+      <span class="task-text">${esc(t.text)}</span>
+      ${t.confidential?'<span class="task-tag">🔒</span>':''}
+      <div class="task-actions">${moveBtns}<button class="task-btn danger" onclick="deleteTask('${t.id}')">✕</button></div>
+    </div>`;
+  }).join('');
+}
+
+function renderRecurring() {
+  const el = document.getElementById('recurringList');
+  if (!recurring.length) { el.innerHTML = '<div class="empty-state">Your recurring task library is empty — add tasks above</div>'; return; }
+  el.innerHTML = recurring.map(r => `
+    <div class="recurring-item">
+      <span class="task-text">${esc(r.text)}</span>
+      <button class="rec-btn to-today" id="rb-${r.id}-today"    onclick="copyRecurringTo('${r.id}','today')">→ Today</button>
+      <button class="rec-btn to-tmrw"  id="rb-${r.id}-tomorrow" onclick="copyRecurringTo('${r.id}','tomorrow')">→ Tomorrow</button>
+      <button class="task-btn danger" style="opacity:0.45;" onclick="deleteRecurring('${r.id}')">✕</button>
+    </div>`).join('');
+}
+
+function genMorning() {
+  const t = tasks.filter(x => x.bucket==='today' && !x.confidential);
+  let p = `☀️ Good morning, today I will be WFO and;\n\n`;
+  t.length ? t.forEach(x => p += `• ${x.text}\n`) : (p += `• (to be added)\n`);
+  return p.trim();
+}
+
+function genEod() {
+  const done    = tasks.filter(t => (t.bucket==='today'||t.bucket==='new') && t.done && !t.confidential);
+  const notDone = tasks.filter(t => t.bucket==='today' && !t.done && !t.confidential);
+  const added   = tasks.filter(t => t.bucket==='new' && !t.confidential);
+  let p = `🌙 Today I have:\n\n`;
+  if (done.length)    { p += `✅ Completed:\n`;         done.forEach(t => p += `• ${t.text} ✓\n`); }
+  if (added.length)   { p += `\n➕ Added today:\n`;     added.forEach(t => p += `• ${t.text}${t.done?' ✓':''}\n`); }
+  if (notDone.length) { p += `\n⏭️ Carrying forward:\n`; notDone.forEach(t => p += `• ${t.text}\n`); }
+  if (!done.length && !notDone.length && !added.length) p += `(No tasks recorded today)\n`;
+  p += `\nI hope everyone has a lovely evening! 🌟`;
+  return p.trim();
+}
+
+function genTomorrow() {
+  const t = tasks.filter(x => x.bucket==='tomorrow' && !x.confidential);
+  let p = `☀️ Good morning, today I will be WFO and;\n\n`;
+  t.length ? t.forEach(x => p += `• ${x.text}\n`) : (p += `• (add tasks in the Tomorrow tab)\n`);
+  return p.trim();
+}
+
+function updateStats() {
+  document.getElementById('statToday').textContent   = tasks.filter(t=>t.bucket==='today'||t.bucket==='new').length;
+  document.getElementById('statDone').textContent    = tasks.filter(t=>t.done).length;
+  document.getElementById('statTmrw').textContent    = tasks.filter(t=>t.bucket==='tomorrow').length;
+  document.getElementById('statBacklog').textContent = tasks.filter(t=>t.bucket==='backlog').length;
+}
+
+async function copyPost(which) {
+  const text  = which==='morning'?genMorning():which==='eod'?genEod():genTomorrow();
+  const btnId = which==='morning'?'morningCopyBtn':which==='eod'?'eodCopyBtn':'tomorrowCopyBtn';
+  await navigator.clipboard.writeText(text);
+  const btn = document.getElementById(btnId);
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+}
+
+function render() {
+  renderList('todayList','today'); renderList('newList','new');
+  renderList('tomorrowList','tomorrow'); renderList('backlogList','backlog');
+  renderRecurring();
+  document.getElementById('morningPost').textContent  = genMorning();
+  document.getElementById('eodPost').textContent      = genEod();
+  document.getElementById('tomorrowPost').textContent = genTomorrow();
+  updateStats();
+}
+
+// ══════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════
 async function signOut() {
+  tasks=[]; recurring=[];
   await sb.auth.signOut();
+  document.getElementById('appScreen').style.display = 'none';
+  pinBuffer=''; updateDots();
+  document.getElementById('pinMsg').textContent='';
+  document.getElementById('pinMsg').className='pin-msg';
+  document.getElementById('pinSubtitle').textContent='Enter your PIN';
+  document.getElementById('authScreen').style.display='block';
+}
+
+async function boot() {
+  const timeout = setTimeout(() => {
+    document.getElementById('loadingOverlay').style.display = 'none';
+    initPinScreen();
+  }, 5000);
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    clearTimeout(timeout);
+    document.getElementById('loadingOverlay').style.display = 'none';
+    if (session?.user) {
+      currentUser = session.user;
+      document.getElementById('appScreen').style.display = 'block';
+      await loadData();
+    } else {
+      initPinScreen();
+    }
+  } catch(e) {
+    clearTimeout(timeout);
+    document.getElementById('loadingOverlay').style.display = 'none';
+    initPinScreen();
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event==='SIGNED_IN' && session?.user) {
+      currentUser = session.user;
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display  = 'block';
+      await loadData();
+    } else if (event==='SIGNED_OUT') {
+      currentUser = null;
+      document.getElementById('appScreen').style.display = 'none';
+    }
+  });
 }
 
 boot();
-
 </script>
 </body>
 </html>
