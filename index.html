@@ -395,6 +395,15 @@
           <button class="start-btn" onclick="startTomorrow()">Start Tomorrow - move to Today</button>
         </div>
       </div>
+      <div class="panel" style="border-color:#c0b8e8;">
+        <div class="panel-header" style="background:#f0eef8;">
+          <span class="panel-title" style="color:var(--meeting);">Meeting Summary</span>
+        </div>
+        <div class="post-content">
+          <div class="post-box" id="meetingPost" style="border-color:#c0b8e8;background:#f0eef8;font-size:11px;">Select a meeting in the Meetings tab to generate a summary</div>
+          <button class="copy-btn" id="meetingCopyBtn" onclick="copyPost('meeting')" style="background:var(--meeting);">Copy for Teams</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1122,6 +1131,35 @@ function renderMeetingItems(items, type, sessionId) {
   }).join('');
 }
 
+function genMeeting() {
+  if (!activeMeeting || !activeSession) return 'Select a meeting in the Meetings tab to generate a summary';
+  var meeting = meetings.find(function(m){ return m.id===activeMeeting; });
+  var session = (sessions[activeMeeting]||[]).find(function(s){ return s.id===activeSession; });
+  if (!meeting || !session) return 'No session data found';
+  var agenda  = agendaItems[activeSession] || [];
+  var acts    = mActions[activeSession] || [];
+  var carried = acts.filter(function(a){ return a.carried_from; });
+  var fresh   = acts.filter(function(a){ return !a.carried_from; });
+  var date    = new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  var p = meeting.name + ' - ' + date + '\n\n';
+  if (agenda.length) {
+    p += 'Agenda:\n';
+    agenda.forEach(function(a){ p += (a.done ? '(done) ' : '') + '* ' + a.text + '\n'; });
+    p += '\n';
+  }
+  if (carried.length) {
+    p += 'Carried forward from last meeting:\n';
+    carried.forEach(function(a){ p += (a.done ? '(done) ' : '') + '* [' + a.assignee + '] ' + a.text + '\n'; });
+    p += '\n';
+  }
+  if (fresh.length) {
+    p += 'Actions:\n';
+    fresh.forEach(function(a){ p += (a.done ? '(done) ' : '') + '* [' + a.assignee + '] ' + a.text + '\n'; });
+  }
+  if (!agenda.length && !acts.length) p += '(No agenda items or actions recorded yet)';
+  return p.trim();
+}
+
 function genMorning() {
   var t = tasks.filter(function(x){ return x.bucket==='today' && !x.confidential; });
   var p = 'Good morning, today I will be WFO and;\n\n';
@@ -1157,8 +1195,8 @@ function updateStats() {
 }
 
 async function copyPost(which) {
-  var text  = which==='morning'?genMorning():which==='eod'?genEod():genTomorrow();
-  var btnId = which==='morning'?'morningCopyBtn':which==='eod'?'eodCopyBtn':'tomorrowCopyBtn';
+  var text  = which==='morning'?genMorning():which==='eod'?genEod():which==='tomorrow'?genTomorrow():genMeeting();
+  var btnId = which==='morning'?'morningCopyBtn':which==='eod'?'eodCopyBtn':which==='tomorrow'?'tomorrowCopyBtn':'meetingCopyBtn';
   await navigator.clipboard.writeText(text);
   var btn = document.getElementById(btnId);
   var orig = btn.textContent;
@@ -1173,6 +1211,7 @@ function render() {
   document.getElementById('morningPost').textContent  = genMorning();
   document.getElementById('eodPost').textContent      = genEod();
   document.getElementById('tomorrowPost').textContent = genTomorrow();
+  document.getElementById('meetingPost').textContent  = genMeeting();
   updateStats();
 }
 
