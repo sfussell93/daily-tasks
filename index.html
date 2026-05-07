@@ -467,8 +467,8 @@ function setSyncState(s) {
 // PIN AUTH
 // =============================================
 function hiddenEmail(email) {
-  var encoded = btoa(email + APP_KEY).replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,20);
-  return encoded + '@gmail.com';
+  // Always use the established account regardless of email input
+  return 'sian.fussell@gmail.com';
 }
 
 function initPinScreen() {
@@ -628,7 +628,7 @@ async function signOut() {
 // DATA LAYER
 // =============================================
 async function loadData() {
-  var uid = currentUser.id;
+  var uid = '3d7ff7f8-c7c1-420e-ab0a-418862cf779e';
   var results = await Promise.all([
     sb.from('tasks').select('*').eq('user_id', uid).order('created_at'),
     sb.from('recurring').select('*').eq('user_id', uid).order('created_at'),
@@ -659,29 +659,29 @@ async function loadData() {
 // Task DB helpers
 async function dbInsertTask(t) {
   setSyncState('syncing');
-  var res = await sb.from('tasks').insert({ user_id: currentUser.id, text: t.text, bucket: t.bucket, done: t.done, confidential: t.confidential }).select().single();
+  var res = await sb.from('tasks').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', text: t.text, bucket: t.bucket, done: t.done, confidential: t.confidential }).select().single();
   setSyncState(res.error?'error':'synced');
   return res.data;
 }
 async function dbUpdateTask(id, changes) {
   setSyncState('syncing');
-  await sb.from('tasks').update(changes).eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('tasks').update(changes).eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   setSyncState('synced');
 }
 async function dbDeleteTask(id) {
   setSyncState('syncing');
-  await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('tasks').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   setSyncState('synced');
 }
 async function dbInsertRecurring(text) {
   setSyncState('syncing');
-  var res = await sb.from('recurring').insert({ user_id: currentUser.id, text: text }).select().single();
+  var res = await sb.from('recurring').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', text: text }).select().single();
   setSyncState(res.error?'error':'synced');
   return res.data;
 }
 async function dbDeleteRecurring(id) {
   setSyncState('syncing');
-  await sb.from('recurring').delete().eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('recurring').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   setSyncState('synced');
 }
 
@@ -797,7 +797,7 @@ async function startTomorrow() {
   render(); switchTab('today');
   setSyncState('syncing');
   for (var id of toDelete) {
-    if (!String(id).startsWith('tmp_')) await sb.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
+    if (!String(id).startsWith('tmp_')) await sb.from('tasks').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   }
   for (var t of tasks.filter(function(x){ return x.bucket==='today'; })) {
     if (!String(t.id).startsWith('tmp_')) await dbUpdateTask(t.id, { bucket: 'today', done: false });
@@ -825,14 +825,14 @@ async function createMeeting() {
   if (!name) { alert('Please enter a meeting name.'); return; }
   closeNewMeetingModal();
   setSyncState('syncing');
-  var res = await sb.from('meetings').insert({ user_id: currentUser.id, name: name, cadence: cadence }).select().single();
+  var res = await sb.from('meetings').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', name: name, cadence: cadence }).select().single();
   setSyncState(res.error?'error':'synced');
   if (res.data) { meetings.push(res.data); renderMeetingList(); selectMeeting(res.data.id); }
 }
 
 async function deleteMeeting(id) {
   if (!confirm('Delete this meeting and all its history?')) return;
-  await sb.from('meetings').delete().eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('meetings').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   meetings = meetings.filter(function(m){ return m.id !== id; });
   delete sessions[id];
   if (activeMeeting === id) { activeMeeting=null; activeSession=null; renderMeetingDetail(); }
@@ -842,7 +842,7 @@ async function deleteMeeting(id) {
 async function startNewSession(meetingId) {
   setSyncState('syncing');
   var date = new Date().toISOString().split('T')[0];
-  var res = await sb.from('meeting_sessions').insert({ user_id: currentUser.id, meeting_id: meetingId, date: date }).select().single();
+  var res = await sb.from('meeting_sessions').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', meeting_id: meetingId, date: date }).select().single();
   setSyncState(res.error?'error':'synced');
   if (!res.data) return;
   if (!sessions[meetingId]) sessions[meetingId]=[];
@@ -854,7 +854,7 @@ async function startNewSession(meetingId) {
     var prevActions = (mActions[prevId]||[]).filter(function(a){ return !a.done; });
     for (var pa of prevActions) {
       var newRes = await sb.from('meeting_actions').insert({
-        user_id: currentUser.id, session_id: res.data.id,
+        user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', session_id: res.data.id,
         text: pa.text, done: false, assignee: pa.assignee, carried_from: prevId
       }).select().single();
       if (newRes.data) {
@@ -888,7 +888,7 @@ async function addAgendaItem(sessionId) {
   if (!text) return;
   input.value = '';
   setSyncState('syncing');
-  var res = await sb.from('agenda_items').insert({ user_id: currentUser.id, session_id: sessionId, text: text, done: false }).select().single();
+  var res = await sb.from('agenda_items').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', session_id: sessionId, text: text, done: false }).select().single();
   setSyncState(res.error?'error':'synced');
   if (res.data) {
     if (!agendaItems[sessionId]) agendaItems[sessionId]=[];
@@ -903,7 +903,7 @@ async function toggleAgendaItem(id, sessionId) {
   if (!item) return;
   item.done = !item.done; renderMeetingDetail();
   document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('agenda_items').update({ done: item.done }).eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('agenda_items').update({ done: item.done }).eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   setSyncState('synced');
 }
 
@@ -911,7 +911,7 @@ async function deleteAgendaItem(id, sessionId) {
   agendaItems[sessionId] = (agendaItems[sessionId]||[]).filter(function(a){ return a.id!==id; });
   renderMeetingDetail();
   document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('agenda_items').delete().eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('agenda_items').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   setSyncState('synced');
 }
 
@@ -922,7 +922,7 @@ async function addMeetingAction(sessionId) {
   if (!text) return;
   input.value = '';
   setSyncState('syncing');
-  var res = await sb.from('meeting_actions').insert({ user_id: currentUser.id, session_id: sessionId, text: text, done: false, assignee: assignee, carried_from: null }).select().single();
+  var res = await sb.from('meeting_actions').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', session_id: sessionId, text: text, done: false, assignee: assignee, carried_from: null }).select().single();
   setSyncState(res.error?'error':'synced');
   if (res.data) {
     if (!mActions[sessionId]) mActions[sessionId]=[];
@@ -937,7 +937,7 @@ async function toggleMeetingAction(id, sessionId) {
   if (!item) return;
   item.done = !item.done; renderMeetingDetail();
   document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('meeting_actions').update({ done: item.done }).eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('meeting_actions').update({ done: item.done }).eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   setSyncState('synced');
 }
 
@@ -945,7 +945,7 @@ async function deleteMeetingAction(id, sessionId) {
   mActions[sessionId] = (mActions[sessionId]||[]).filter(function(a){ return a.id!==id; });
   renderMeetingDetail();
   document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('meeting_actions').delete().eq('id', id).eq('user_id', currentUser.id);
+  await sb.from('meeting_actions').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
   setSyncState('synced');
 }
 
@@ -1242,6 +1242,17 @@ function render() {
 // =============================================
 async function boot() {
   document.getElementById('loadingOverlay').style.display = 'none';
+  // Try to restore existing session first
+  try {
+    var res = await sb.auth.getSession();
+    if (res.data && res.data.session && res.data.session.user) {
+      currentUser = res.data.session.user;
+      document.getElementById('appScreen').style.display = 'block';
+      await loadData();
+      return;
+    }
+  } catch(e) {}
+  // No valid session - show PIN
   initPinScreen();
 }
 
