@@ -585,6 +585,8 @@ async function handlePinComplete() {
     if (!stored.email) { localStorage.removeItem(PIN_STORE); location.reload(); return; }
     var email    = hiddenEmail(stored.email);
     var password = pinBuffer + '_' + APP_KEY;
+    document.getElementById('pinMsg').textContent = 'Checking...';
+    document.getElementById('pinMsg').className = 'pin-msg';
     var res = await sb.auth.signInWithPassword({ email: email, password: password });
     if (res.error) {
       updateDots('error');
@@ -594,13 +596,10 @@ async function handlePinComplete() {
       setTimeout(function() { updateDots(); document.getElementById('pinMsg').textContent=''; document.getElementById('pinMsg').className='pin-msg'; }, 1200);
     } else {
       updateDots('success');
-      // Actively show app rather than waiting for onAuthStateChange
-      setTimeout(async function() {
-        currentUser = res.data.user;
-        document.getElementById('authScreen').style.display  = 'none';
-        document.getElementById('appScreen').style.display   = 'block';
-        await loadData();
-      }, 400);
+      currentUser = res.data.user;
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display  = 'block';
+      await loadData();
     }
   }
 }
@@ -1242,41 +1241,8 @@ function render() {
 // BOOT
 // =============================================
 async function boot() {
-  var timeout = setTimeout(function() {
-    document.getElementById('loadingOverlay').style.display = 'none';
-    initPinScreen();
-  }, 5000);
-
-  try {
-    var res = await sb.auth.getSession();
-    clearTimeout(timeout);
-    document.getElementById('loadingOverlay').style.display = 'none';
-    if (res.data.session && res.data.session.user) {
-      currentUser = res.data.session.user;
-      document.getElementById('appScreen').style.display = 'block';
-      await loadData();
-    } else {
-      initPinScreen();
-    }
-  } catch(e) {
-    clearTimeout(timeout);
-    document.getElementById('loadingOverlay').style.display = 'none';
-    initPinScreen();
-  }
-
-  sb.auth.onAuthStateChange(async function(event, session) {
-    if (event==='SIGNED_IN' && session && session.user) {
-      currentUser = session.user;
-      document.getElementById('authScreen').style.display  = 'none';
-      document.getElementById('appScreen').style.display   = 'block';
-      document.getElementById('loadingOverlay').style.display = 'none';
-      await loadData();
-    } else if (event==='SIGNED_OUT') {
-      currentUser = null;
-      document.getElementById('appScreen').style.display  = 'none';
-      document.getElementById('authScreen').style.display = 'block';
-    }
-  });
+  document.getElementById('loadingOverlay').style.display = 'none';
+  initPinScreen();
 }
 
 boot();
