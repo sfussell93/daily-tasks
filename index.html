@@ -826,7 +826,9 @@ async function createMeeting() {
   closeNewMeetingModal();
   setSyncState('syncing');
   var res = await sb.from('meetings').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', name: name, cadence: cadence }).select().single();
+  console.log('createMeeting result:', JSON.stringify(res));
   setSyncState(res.error?'error':'synced');
+  if (res.error) { alert('Error: ' + res.error.message); return; }
   if (res.data) { meetings.push(res.data); renderMeetingList(); selectMeeting(res.data.id); }
 }
 
