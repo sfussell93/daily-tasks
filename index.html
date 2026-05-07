@@ -809,24 +809,20 @@ async function startTomorrow() {
 // MEETINGS
 // =============================================
 function openNewMeetingModal() {
-  document.getElementById('newMeetingModal').classList.add('open');
-  setTimeout(function(){ document.getElementById('newMeetingName').focus(); }, 50);
+  var name = prompt('Meeting name:');
+  if (!name || !name.trim()) return;
+  var cadence = prompt('Cadence (optional, e.g. Every Monday 9am):') || '';
+  doCreateMeeting(name.trim(), cadence.trim());
 }
 
-function closeNewMeetingModal() {
-  document.getElementById('newMeetingModal').classList.remove('open');
-  document.getElementById('newMeetingName').value = '';
-  document.getElementById('newMeetingCadence').value = '';
-}
+function closeNewMeetingModal() {}
 
-async function createMeeting() {
-  var name    = document.getElementById('newMeetingName').value.trim();
-  var cadence = document.getElementById('newMeetingCadence').value.trim();
-  if (!name) { alert('Please enter a meeting name.'); return; }
-  closeNewMeetingModal();
+async function createMeeting() {}
+
+async function doCreateMeeting(name, cadence) {
+async function doCreateMeeting(name, cadence) {
   setSyncState('syncing');
   var res = await sb.from('meetings').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', name: name, cadence: cadence }).select().single();
-  console.log('createMeeting result:', JSON.stringify(res));
   setSyncState(res.error?'error':'synced');
   if (res.error) { alert('Error: ' + res.error.message); return; }
   if (res.data) { meetings.push(res.data); renderMeetingList(); selectMeeting(res.data.id); }
