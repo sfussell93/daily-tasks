@@ -569,6 +569,15 @@ async function handlePinComplete() {
     updateDots('success');
     document.getElementById('pinMsg').textContent = 'PIN set! Loading...';
     document.getElementById('pinMsg').className = 'pin-msg success';
+    setTimeout(async function() {
+      var session = res.data.session || (res.data.user ? { user: res.data.user } : null);
+      if (session) {
+        currentUser = res.data.user;
+        document.getElementById('authScreen').style.display  = 'none';
+        document.getElementById('appScreen').style.display   = 'block';
+        await loadData();
+      }
+    }, 600);
     return;
   }
   if (pinMode === 'enter') {
@@ -585,6 +594,13 @@ async function handlePinComplete() {
       setTimeout(function() { updateDots(); document.getElementById('pinMsg').textContent=''; document.getElementById('pinMsg').className='pin-msg'; }, 1200);
     } else {
       updateDots('success');
+      // Actively show app rather than waiting for onAuthStateChange
+      setTimeout(async function() {
+        currentUser = res.data.user;
+        document.getElementById('authScreen').style.display  = 'none';
+        document.getElementById('appScreen').style.display   = 'block';
+        await loadData();
+      }, 400);
     }
   }
 }
