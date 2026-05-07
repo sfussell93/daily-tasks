@@ -859,6 +859,7 @@ function selectMeeting(id) {
   activeSession = mSessions.length ? mSessions[0].id : null;
   renderMeetingList();
   renderMeetingDetail();
+  document.getElementById('meetingPost').textContent = genMeeting();
 }
 
 function selectSession(sessionId) {
@@ -878,6 +879,7 @@ async function addAgendaItem(sessionId) {
     if (!agendaItems[sessionId]) agendaItems[sessionId]=[];
     agendaItems[sessionId].push(res.data);
     renderMeetingDetail();
+    document.getElementById('meetingPost').textContent = genMeeting();
   }
 }
 
@@ -885,6 +887,7 @@ async function toggleAgendaItem(id, sessionId) {
   var item = (agendaItems[sessionId]||[]).find(function(a){ return a.id===id; });
   if (!item) return;
   item.done = !item.done; renderMeetingDetail();
+  document.getElementById('meetingPost').textContent = genMeeting();
   await sb.from('agenda_items').update({ done: item.done }).eq('id', id).eq('user_id', currentUser.id);
   setSyncState('synced');
 }
@@ -892,6 +895,7 @@ async function toggleAgendaItem(id, sessionId) {
 async function deleteAgendaItem(id, sessionId) {
   agendaItems[sessionId] = (agendaItems[sessionId]||[]).filter(function(a){ return a.id!==id; });
   renderMeetingDetail();
+  document.getElementById('meetingPost').textContent = genMeeting();
   await sb.from('agenda_items').delete().eq('id', id).eq('user_id', currentUser.id);
   setSyncState('synced');
 }
@@ -909,6 +913,7 @@ async function addMeetingAction(sessionId) {
     if (!mActions[sessionId]) mActions[sessionId]=[];
     mActions[sessionId].push(res.data);
     renderMeetingDetail();
+    document.getElementById('meetingPost').textContent = genMeeting();
   }
 }
 
@@ -916,6 +921,7 @@ async function toggleMeetingAction(id, sessionId) {
   var item = (mActions[sessionId]||[]).find(function(a){ return a.id===id; });
   if (!item) return;
   item.done = !item.done; renderMeetingDetail();
+  document.getElementById('meetingPost').textContent = genMeeting();
   await sb.from('meeting_actions').update({ done: item.done }).eq('id', id).eq('user_id', currentUser.id);
   setSyncState('synced');
 }
@@ -923,6 +929,7 @@ async function toggleMeetingAction(id, sessionId) {
 async function deleteMeetingAction(id, sessionId) {
   mActions[sessionId] = (mActions[sessionId]||[]).filter(function(a){ return a.id!==id; });
   renderMeetingDetail();
+  document.getElementById('meetingPost').textContent = genMeeting();
   await sb.from('meeting_actions').delete().eq('id', id).eq('user_id', currentUser.id);
   setSyncState('synced');
 }
