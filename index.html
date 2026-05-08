@@ -8,217 +8,160 @@
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap');
-
-  :root {
-    --bg: #f5f0e8; --surface: #fffdf7; --surface2: #f0ebe0; --border: #d4ccb8;
-    --text: #2a2520; --text-muted: #7a6f60; --accent: #2d5a3d; --accent-light: #e8f2eb;
-    --amber: #b85c00; --amber-light: #fef3e2; --red: #8b2020;
-    --blue: #1a3a5c; --blue-light: #e8f0f8;
-    --confidential: #4a1a6b; --confidential-light: #f3eaf8;
-    --tomorrow: #1a4a4a; --tomorrow-light: #e8f2f2;
-    --recurring: #5c3a00; --recurring-light: #fdf5e8;
-    --meeting: #2a1a5c; --meeting-light: #eeebf8;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
-
-  #loadingOverlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 18px; color: var(--text-muted); z-index: 100; }
-
-  /* PIN */
-  #authScreen { max-width: 300px; margin: 60px auto; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .pin-header { padding: 20px 20px 14px; border-bottom: 1.5px solid var(--border); background: var(--surface2); text-align: center; }
-  .pin-header h1 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
-  .pin-header p { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-  .pin-body { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
-  .pin-dots { display: flex; gap: 14px; }
-  .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); background: white; transition: all 0.15s; }
-  .pin-dot.filled { background: var(--text); border-color: var(--text); }
-  .pin-dot.error { background: var(--red); border-color: var(--red); animation: shake 0.4s ease; }
-  .pin-dot.success { background: var(--accent); border-color: var(--accent); }
-  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
-  .pin-keypad { display: grid; grid-template-columns: repeat(3, 62px); gap: 8px; }
-  .pin-key { width: 62px; height: 62px; font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; border: 1.5px solid var(--border); border-radius: 6px; background: white; cursor: pointer; color: var(--text); transition: all 0.1s; display: flex; align-items: center; justify-content: center; user-select: none; }
-  .pin-key:hover { background: var(--surface2); border-color: var(--text); }
-  .pin-key:active { background: var(--text); color: white; transform: scale(0.95); }
-  .pin-key.del { font-size: 16px; color: var(--text-muted); }
-  .pin-key.empty { border: none; background: transparent; cursor: default; pointer-events: none; }
-  .pin-msg { font-size: 11px; text-align: center; min-height: 16px; color: var(--text-muted); }
-  .pin-msg.error { color: var(--red); }
-  .pin-msg.success { color: var(--accent); }
-  .pin-email-input { width: 100%; font-family: 'DM Mono', monospace; font-size: 12px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 3px; background: white; color: var(--text); outline: none; }
-  .pin-email-input:focus { border-color: var(--text); }
-  .pin-continue-btn { width: 100%; font-family: 'DM Mono', monospace; font-size: 12px; padding: 10px; background: var(--text); color: white; border: none; border-radius: 3px; cursor: pointer; }
-  .pin-link { font-size: 10px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
-
-  /* App */
-  #appScreen { display: none; }
-  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 2px solid var(--text); flex-wrap: wrap; }
-  header h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
-  .header-date { font-size: 12px; color: var(--text-muted); letter-spacing: 0.05em; text-transform: uppercase; flex: 1; }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 5px; }
-  .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
-  .sync-dot.error { background: var(--red); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .sync-label { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; }
-  .signout-btn { font-family: 'DM Mono', monospace; font-size: 10px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 3px; background: white; cursor: pointer; color: var(--text-muted); }
-  .signout-btn:hover { border-color: var(--red); color: var(--red); }
-
-  /* Tabs */
-  .tab-nav { display: flex; border: 1.5px solid var(--border); border-radius: 4px; overflow: hidden; background: var(--surface2); margin-bottom: 16px; }
-  .tab-btn { flex: 1; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 4px; border: none; border-right: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
-  .tab-btn:last-child { border-right: none; }
-  .tab-btn:hover { background: var(--surface); color: var(--text); }
-  .tab-btn.active { background: var(--surface); color: var(--text); }
-  .tab-btn.active.tab-today    { box-shadow: inset 0 -2px 0 var(--blue); }
-  .tab-btn.active.tab-tomorrow { box-shadow: inset 0 -2px 0 var(--tomorrow); }
-  .tab-btn.active.tab-recurring{ box-shadow: inset 0 -2px 0 var(--recurring); }
-  .tab-btn.active.tab-backlog  { box-shadow: inset 0 -2px 0 var(--amber); }
-  .tab-btn.active.tab-meetings { box-shadow: inset 0 -2px 0 var(--meeting); }
-  .tab-pane { display: none; flex-direction: column; gap: 16px; }
-  .tab-pane.active { display: flex; }
-
-  /* Layout */
-  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
-  .left-col { min-width: 0; }
-  .right-col { display: flex; flex-direction: column; gap: 16px; }
-
-  /* Panels */
-  .panel { background: var(--surface); border: 1.5px solid var(--border); border-radius: 4px; overflow: hidden; }
-  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1.5px solid var(--border); background: var(--surface2); gap: 8px; flex-wrap: wrap; }
-  .panel-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .dot-today { background: var(--blue); } .dot-new { background: var(--red); }
-  .dot-backlog { background: var(--amber); } .dot-tomorrow { background: var(--tomorrow); }
-  .dot-recurring { background: var(--recurring); } .dot-meeting { background: var(--meeting); }
-  .dot-amber { background: var(--amber); } .dot-accent { background: var(--accent); }
-  .section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-  .section:last-child { border-bottom: none; }
-
-  /* Tasks */
-  .task-list { display: flex; flex-direction: column; gap: 6px; }
-  .task-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 3px; border: 1px solid transparent; transition: all 0.15s ease; }
-  .task-item:hover { background: var(--surface2); border-color: var(--border); }
-  .task-item.done { opacity: 0.5; }
-  .task-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
-  .task-item.confidential { background: var(--confidential-light); border-color: #d4b8e8; }
-  .task-item.carried { background: var(--amber-light); border-color: #e8c87a; }
-  .task-check { width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 2px; cursor: pointer; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: white; }
-  .task-check:hover { border-color: var(--accent); }
-  .task-check.checked { background: var(--accent); border-color: var(--accent); }
-  .task-check.checked::after { content: 'v'; color: white; font-size: 10px; line-height: 1; }
-  .task-text { font-size: 13px; line-height: 1.4; flex: 1; word-break: break-word; }
-  .task-tag { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 5px; border-radius: 2px; flex-shrink: 0; margin-top: 2px; }
-  .tag-conf { background: var(--confidential-light); color: var(--confidential); border: 1px solid #c9a8e0; }
-  .tag-carried { background: var(--amber-light); color: var(--amber); border: 1px solid #e8c87a; }
-  .tag-assignee { background: var(--blue-light); color: var(--blue); border: 1px solid #b8cce0; }
-  .tag-assignee.me { background: var(--confidential-light); color: var(--confidential); border-color: #c9a8e0; }
-  .task-actions { display: flex; gap: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
-  .task-item:hover .task-actions { opacity: 1; }
-  .task-btn { font-size: 10px; padding: 2px 5px; border: 1px solid var(--border); border-radius: 2px; background: white; cursor: pointer; color: var(--text-muted); font-family: inherit; transition: all 0.12s; white-space: nowrap; }
-  .task-btn:hover { border-color: var(--text); color: var(--text); }
-  .task-btn.danger:hover { border-color: var(--red); color: var(--red); }
-  .task-btn.promote:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* Recurring */
-  .recurring-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 3px; border: 1px solid #e0cfa0; background: var(--recurring-light); }
-  .rec-btn { font-size: 10px; padding: 3px 7px; border: 1.5px solid; border-radius: 2px; background: white; cursor: pointer; font-family: inherit; font-weight: 500; transition: all 0.12s; white-space: nowrap; flex-shrink: 0; }
-  .rec-btn.to-today { border-color: var(--blue); color: var(--blue); }
-  .rec-btn.to-today:hover { background: var(--blue); color: white; }
-  .rec-btn.to-tmrw { border-color: var(--tomorrow); color: var(--tomorrow); }
-  .rec-btn.to-tmrw:hover { background: var(--tomorrow); color: white; }
-  .rec-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
-
-  /* Meetings */
-  .meeting-list-sidebar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-  .meeting-tab-card { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 3px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; transition: all 0.15s; }
-  .meeting-tab-card:hover { border-color: var(--meeting); background: var(--meeting-light); }
-  .meeting-tab-card.active { border-color: var(--meeting); background: var(--meeting-light); }
-  .meeting-tab-card-name { font-size: 13px; flex: 1; }
-  .meeting-tab-card-meta { font-size: 10px; color: var(--text-muted); }
-  .new-meeting-btn { font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px; background: var(--surface); color: var(--text-muted); border: 1.5px dashed var(--border); border-radius: 3px; cursor: pointer; width: 100%; text-align: center; transition: all 0.15s; }
-  .new-meeting-btn:hover { border-color: var(--meeting); color: var(--meeting); }
-  .meeting-detail { display: flex; flex-direction: column; gap: 12px; }
-  .meeting-header-bar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--meeting-light); border: 1.5px solid var(--meeting); border-radius: 4px; flex-wrap: wrap; }
-  .meeting-header-name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; flex: 1; color: var(--meeting); }
-  .session-badge { font-size: 10px; padding: 3px 8px; border-radius: 2px; background: var(--blue-light); color: var(--blue); border: 1px solid #b8cce0; }
-  .no-meeting-selected { font-size: 12px; color: var(--text-muted); text-align: center; padding: 40px 20px; font-style: italic; }
-
-  /* Add area */
-  .add-area { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
-  .add-input { flex: 1; font-family: 'DM Mono', monospace; font-size: 12px; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 3px; background: white; color: var(--text); outline: none; transition: border-color 0.15s; min-width: 0; }
-  .add-input:focus { border-color: var(--text); }
-  .add-input::placeholder { color: var(--text-muted); }
-  .add-btn { font-family: 'DM Mono', monospace; font-size: 11px; padding: 7px 12px; background: var(--text); color: white; border: none; border-radius: 3px; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
-  .add-btn:hover { opacity: 0.8; }
-  .conf-label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); cursor: pointer; padding: 4px 0; user-select: none; flex-shrink: 0; }
-  .conf-label input { cursor: pointer; accent-color: var(--confidential); }
-
-  /* Right col */
-  .post-content { padding: 14px 16px; }
-  .post-box { font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.7; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 3px; padding: 12px; min-height: 70px; white-space: pre-wrap; word-break: break-word; color: var(--text); max-height: 200px; overflow-y: auto; }
-  .copy-btn { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px 14px; background: var(--text); color: white; border: none; border-radius: 3px; cursor: pointer; transition: all 0.15s; width: 100%; }
-  .copy-btn:hover { opacity: 0.8; }
-  .copy-btn.copied { background: var(--accent) !important; }
-  .start-btn { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px 14px; background: var(--tomorrow); color: white; border: none; border-radius: 3px; cursor: pointer; transition: opacity 0.15s; width: 100%; }
-  .start-btn:hover { opacity: 0.85; }
-  .download-btn { font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px 14px; background: var(--accent); color: white; border: none; border-radius: 3px; cursor: pointer; transition: opacity 0.15s; width: 100%; text-align: center; margin-top: 10px; }
-  .download-btn:hover { opacity: 0.85; }
-  .next-session-btn { font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px 14px; background: var(--meeting); color: white; border: none; border-radius: 3px; cursor: pointer; transition: opacity 0.15s; width: 100%; text-align: center; margin-top: 8px; }
-  .next-session-btn:hover { opacity: 0.85; }
-
-  .stats-row { display: flex; padding: 12px 16px; background: var(--surface2); }
-  .stat { flex: 1; text-align: center; }
-  .stat-num { font-size: 20px; font-family: 'Fraunces', serif; font-weight: 600; line-height: 1; margin-bottom: 2px; }
-  .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
-  .c-done { color: var(--accent); } .c-today { color: var(--blue); }
-  .c-tmrw { color: var(--tomorrow); } .c-backlog { color: var(--amber); }
-  .empty-state { font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 0; font-style: italic; }
-  .notice { font-size: 10px; padding: 8px 10px; border-radius: 3px; line-height: 1.55; margin-top: 10px; }
-  .n-conf { background: var(--confidential-light); color: var(--confidential); border: 1px solid #d4b8e8; }
-  .n-tmrw { background: var(--tomorrow-light); color: var(--tomorrow); border: 1px solid #b0cfcf; }
-  .n-rec  { background: var(--recurring-light); color: var(--recurring); border: 1px solid #d4b870; }
-  .n-amber { background: var(--amber-light); color: var(--amber); border: 1px solid #e8c87a; }
-  .header-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-  .hdr-btn { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 2px; background: white; cursor: pointer; color: var(--text-muted); transition: all 0.12s; white-space: nowrap; }
-  .hdr-btn:hover { border-color: var(--text); color: var(--text); }
-
-  /* Modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 200; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; width: 100%; max-width: 380px; overflow: hidden; }
-  .modal-header { padding: 16px 20px; border-bottom: 1.5px solid var(--border); background: var(--surface2); }
-  .modal-header h3 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; }
-  .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-  .modal-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); display: block; margin-bottom: 4px; }
-  .modal-input { font-family: 'DM Mono', monospace; font-size: 13px; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 3px; background: white; color: var(--text); outline: none; width: 100%; }
-  .modal-input:focus { border-color: var(--text); }
-  .modal-footer { display: flex; gap: 8px; padding: 0 20px 20px; }
-  .modal-btn { flex: 1; font-family: 'DM Mono', monospace; font-size: 12px; padding: 9px; border: 1.5px solid var(--border); border-radius: 3px; cursor: pointer; background: white; color: var(--text-muted); transition: all 0.15s; }
-  .modal-btn.primary { background: var(--text); color: white; border-color: var(--text); }
-  .modal-btn:hover { border-color: var(--text); color: var(--text); }
-  .modal-btn.primary:hover { opacity: 0.8; }
-
-  @media (max-width: 820px) { body { padding: 16px; } .layout { grid-template-columns: 1fr; } .right-col { order: -1; } }
+  :root{--bg:#f5f0e8;--surface:#fffdf7;--surface2:#f0ebe0;--border:#d4ccb8;--text:#2a2520;--text-muted:#7a6f60;--accent:#2d5a3d;--accent-light:#e8f2eb;--amber:#b85c00;--amber-light:#fef3e2;--red:#8b2020;--blue:#1a3a5c;--blue-light:#e8f0f8;--confidential:#4a1a6b;--confidential-light:#f3eaf8;--tomorrow:#1a4a4a;--tomorrow-light:#e8f2f2;--recurring:#5c3a00;--recurring-light:#fdf5e8;--meeting:#2a1a5c;--meeting-light:#eeebf8}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:24px}
+  #loadingOverlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:'Fraunces',serif;font-size:18px;color:var(--text-muted);z-index:100}
+  .loading-spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--text-muted);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #authScreen{display:none;max-width:300px;margin:60px auto;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;overflow:hidden}
+  .pin-header{padding:20px 20px 14px;border-bottom:1.5px solid var(--border);background:var(--surface2);text-align:center}
+  .pin-header h1{font-family:'Fraunces',serif;font-size:20px;font-weight:600}
+  .pin-header p{font-size:11px;color:var(--text-muted);margin-top:3px}
+  .pin-body{padding:20px;display:flex;flex-direction:column;align-items:center;gap:18px}
+  .pin-dots{display:flex;gap:14px}
+  .pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);background:white;transition:all .15s}
+  .pin-dot.filled{background:var(--text);border-color:var(--text)}
+  .pin-dot.error{background:var(--red);border-color:var(--red);animation:shake .4s ease}
+  .pin-dot.success{background:var(--accent);border-color:var(--accent)}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  .pin-keypad{display:grid;grid-template-columns:repeat(3,62px);gap:8px}
+  .pin-key{width:62px;height:62px;font-family:'Fraunces',serif;font-size:22px;font-weight:600;border:1.5px solid var(--border);border-radius:6px;background:white;cursor:pointer;color:var(--text);transition:all .1s;display:flex;align-items:center;justify-content:center;user-select:none}
+  .pin-key:hover{background:var(--surface2);border-color:var(--text)}
+  .pin-key:active{background:var(--text);color:white;transform:scale(.95)}
+  .pin-key.del{font-size:16px;color:var(--text-muted)}
+  .pin-key.empty{border:none;background:transparent;cursor:default;pointer-events:none}
+  .pin-msg{font-size:11px;text-align:center;min-height:16px;color:var(--text-muted)}
+  .pin-msg.error{color:var(--red)}
+  .pin-msg.success{color:var(--accent)}
+  #appScreen{display:none}
+  header{display:flex;align-items:baseline;gap:12px;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid var(--text);flex-wrap:wrap}
+  header h1{font-family:'Fraunces',serif;font-size:28px;font-weight:600;letter-spacing:-.5px}
+  .header-date{font-size:12px;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;flex:1}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px}
+  .sync-dot.syncing{background:var(--amber);animation:pulse 1s infinite}
+  .sync-dot.error{background:var(--red)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .sync-label{font-size:10px;color:var(--text-muted);display:flex;align-items:center}
+  .signout-btn{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border:1px solid var(--border);border-radius:3px;background:white;cursor:pointer;color:var(--text-muted)}
+  .signout-btn:hover{border-color:var(--red);color:var(--red)}
+  .tab-nav{display:flex;border:1.5px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2);margin-bottom:16px}
+  .tab-btn{flex:1;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;padding:10px 4px;border:none;border-right:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-muted);transition:all .15s}
+  .tab-btn:last-child{border-right:none}
+  .tab-btn:hover{background:var(--surface);color:var(--text)}
+  .tab-btn.active{background:var(--surface);color:var(--text)}
+  .tab-btn.active.tab-today{box-shadow:inset 0 -2px 0 var(--blue)}
+  .tab-btn.active.tab-tomorrow{box-shadow:inset 0 -2px 0 var(--tomorrow)}
+  .tab-btn.active.tab-recurring{box-shadow:inset 0 -2px 0 var(--recurring)}
+  .tab-btn.active.tab-backlog{box-shadow:inset 0 -2px 0 var(--amber)}
+  .tab-btn.active.tab-meetings{box-shadow:inset 0 -2px 0 var(--meeting)}
+  .tab-pane{display:none;flex-direction:column;gap:16px}
+  .tab-pane.active{display:flex}
+  .layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+  .left-col{min-width:0}
+  .right-col{display:flex;flex-direction:column;gap:16px}
+  .panel{background:var(--surface);border:1.5px solid var(--border);border-radius:4px;overflow:hidden}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1.5px solid var(--border);background:var(--surface2);gap:8px;flex-wrap:wrap}
+  .panel-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .dot-today{background:var(--blue)}.dot-new{background:var(--red)}.dot-backlog{background:var(--amber)}
+  .dot-tomorrow{background:var(--tomorrow)}.dot-recurring{background:var(--recurring)}.dot-meeting{background:var(--meeting)}
+  .dot-amber{background:var(--amber)}.dot-accent{background:var(--accent)}.dot-blue{background:var(--blue)}
+  .section{padding:14px 16px;border-bottom:1px solid var(--border)}
+  .section:last-child{border-bottom:none}
+  .task-list{display:flex;flex-direction:column;gap:6px}
+  .task-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:3px;border:1px solid transparent;transition:all .15s}
+  .task-item:hover{background:var(--surface2);border-color:var(--border)}
+  .task-item.done{opacity:.5}
+  .task-item.done .task-text{text-decoration:line-through;color:var(--text-muted)}
+  .task-item.confidential{background:var(--confidential-light);border-color:#d4b8e8}
+  .task-item.carried{background:var(--amber-light);border-color:#e8c87a}
+  .task-check{width:16px;height:16px;border:1.5px solid var(--border);border-radius:2px;cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;background:white}
+  .task-check:hover{border-color:var(--accent)}
+  .task-check.checked{background:var(--accent);border-color:var(--accent)}
+  .task-check.checked::after{content:'v';color:white;font-size:10px;line-height:1}
+  .task-text{font-size:13px;line-height:1.4;flex:1;word-break:break-word}
+  .task-tag{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;padding:2px 5px;border-radius:2px;flex-shrink:0;margin-top:2px}
+  .tag-conf{background:var(--confidential-light);color:var(--confidential);border:1px solid #c9a8e0}
+  .tag-carried{background:var(--amber-light);color:var(--amber);border:1px solid #e8c87a}
+  .tag-assignee{background:var(--blue-light);color:var(--blue);border:1px solid #b8cce0}
+  .tag-assignee.me{background:var(--confidential-light);color:var(--confidential);border-color:#c9a8e0}
+  .task-actions{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
+  .task-item:hover .task-actions{opacity:1}
+  .task-btn{font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:2px;background:white;cursor:pointer;color:var(--text-muted);font-family:inherit;transition:all .12s;white-space:nowrap}
+  .task-btn:hover{border-color:var(--text);color:var(--text)}
+  .task-btn.danger:hover{border-color:var(--red);color:var(--red)}
+  .task-btn.promote:hover{border-color:var(--accent);color:var(--accent)}
+  .recurring-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:3px;border:1px solid #e0cfa0;background:var(--recurring-light)}
+  .rec-btn{font-size:10px;padding:3px 7px;border:1.5px solid;border-radius:2px;background:white;cursor:pointer;font-family:inherit;font-weight:500;transition:all .12s;white-space:nowrap;flex-shrink:0}
+  .rec-btn.to-today{border-color:var(--blue);color:var(--blue)}
+  .rec-btn.to-today:hover{background:var(--blue);color:white}
+  .rec-btn.to-tmrw{border-color:var(--tomorrow);color:var(--tomorrow)}
+  .rec-btn.to-tmrw:hover{background:var(--tomorrow);color:white}
+  .rec-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+  .meeting-tab-card{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:3px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;margin-bottom:8px}
+  .meeting-tab-card:hover,.meeting-tab-card.active{border-color:var(--meeting);background:var(--meeting-light)}
+  .meeting-tab-card-name{font-size:13px;flex:1}
+  .meeting-tab-card-meta{font-size:10px;color:var(--text-muted)}
+  .meeting-header-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--meeting-light);border:1.5px solid var(--meeting);border-radius:4px;flex-wrap:wrap}
+  .meeting-header-name{font-family:'Fraunces',serif;font-size:18px;font-weight:600;flex:1;color:var(--meeting)}
+  .session-badge{font-size:10px;padding:3px 8px;border-radius:2px;background:var(--blue-light);color:var(--blue);border:1px solid #b8cce0}
+  .no-meeting-selected{font-size:12px;color:var(--text-muted);text-align:center;padding:40px 20px;font-style:italic}
+  .add-area{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+  .add-input{flex:1;font-family:'DM Mono',monospace;font-size:12px;padding:7px 10px;border:1.5px solid var(--border);border-radius:3px;background:white;color:var(--text);outline:none;transition:border-color .15s;min-width:0}
+  .add-input:focus{border-color:var(--text)}
+  .add-input::placeholder{color:var(--text-muted)}
+  .add-btn{font-family:'DM Mono',monospace;font-size:11px;padding:7px 12px;background:var(--text);color:white;border:none;border-radius:3px;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+  .add-btn:hover{opacity:.8}
+  .conf-label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);cursor:pointer;padding:4px 0;user-select:none;flex-shrink:0}
+  .conf-label input{cursor:pointer;accent-color:var(--confidential)}
+  .post-content{padding:14px 16px}
+  .post-box{font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;background:var(--surface2);border:1.5px solid var(--border);border-radius:3px;padding:12px;min-height:70px;white-space:pre-wrap;word-break:break-word;color:var(--text);max-height:200px;overflow-y:auto}
+  .copy-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--text);color:white;border:none;border-radius:3px;cursor:pointer;transition:all .15s;width:100%}
+  .copy-btn:hover{opacity:.8}
+  .copy-btn.copied{background:var(--accent)!important}
+  .start-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--tomorrow);color:white;border:none;border-radius:3px;cursor:pointer;transition:opacity .15s;width:100%}
+  .start-btn:hover{opacity:.85}
+  .download-btn{font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--accent);color:white;border:none;border-radius:3px;cursor:pointer;transition:opacity .15s;width:100%;text-align:center;margin-top:10px}
+  .download-btn:hover{opacity:.85}
+  .next-session-btn{font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--meeting);color:white;border:none;border-radius:3px;cursor:pointer;transition:opacity .15s;width:100%;text-align:center;margin-top:8px}
+  .next-session-btn:hover{opacity:.85}
+  .stats-row{display:flex;padding:12px 16px;background:var(--surface2)}
+  .stat{flex:1;text-align:center}
+  .stat-num{font-size:20px;font-family:'Fraunces',serif;font-weight:600;line-height:1;margin-bottom:2px}
+  .stat-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)}
+  .c-done{color:var(--accent)}.c-today{color:var(--blue)}.c-tmrw{color:var(--tomorrow)}.c-backlog{color:var(--amber)}
+  .empty-state{font-size:11px;color:var(--text-muted);text-align:center;padding:12px 0;font-style:italic}
+  .notice{font-size:10px;padding:8px 10px;border-radius:3px;line-height:1.55;margin-top:10px}
+  .n-conf{background:var(--confidential-light);color:var(--confidential);border:1px solid #d4b8e8}
+  .n-tmrw{background:var(--tomorrow-light);color:var(--tomorrow);border:1px solid #b0cfcf}
+  .n-rec{background:var(--recurring-light);color:var(--recurring);border:1px solid #d4b870}
+  .n-amber{background:var(--amber-light);color:var(--amber);border:1px solid #e8c87a}
+  .header-btns{display:flex;gap:6px;flex-wrap:wrap}
+  .hdr-btn{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:2px;background:white;cursor:pointer;color:var(--text-muted);transition:all .12s;white-space:nowrap}
+  .hdr-btn:hover{border-color:var(--text);color:var(--text)}
+  @media(max-width:820px){body{padding:16px}.layout{grid-template-columns:1fr}.right-col{order:-1}}
 </style>
 </head>
 <body>
 
-<div id="loadingOverlay">Loading...</div>
+<div id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <span>Loading...</span>
+</div>
 
-<!-- PIN screen -->
 <div id="authScreen">
   <div class="pin-header">
     <h1>Daily Planner</h1>
     <p id="pinSubtitle">Enter your PIN</p>
   </div>
-  <div class="pin-body" id="pinBody">
+  <div class="pin-body">
     <div class="pin-dots">
       <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
       <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
     </div>
     <div class="pin-msg" id="pinMsg"></div>
-    <div class="pin-keypad" id="pinKeypad">
+    <div class="pin-keypad">
       <button class="pin-key" onclick="pinPress('1')">1</button>
       <button class="pin-key" onclick="pinPress('2')">2</button>
       <button class="pin-key" onclick="pinPress('3')">3</button>
@@ -232,30 +175,25 @@
       <button class="pin-key" onclick="pinPress('0')">0</button>
       <button class="pin-key del" onclick="pinDel()">&#9003;</button>
     </div>
-    <span class="pin-link" id="resetLink" onclick="sendReset()" style="display:none;">Forgot PIN? Send reset email</span>
   </div>
 </div>
 
-<!-- App -->
 <div id="appScreen">
   <header>
     <h1>Daily Planner</h1>
     <span class="header-date" id="dateDisplay"></span>
     <span class="sync-label"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Synced</span></span>
-    <button class="signout-btn" onclick="signOut()">Sign out</button>
+    <button class="signout-btn" onclick="signOut()">Lock &#128274;</button>
   </header>
-
   <div class="layout">
     <div class="left-col">
       <div class="tab-nav">
-        <button class="tab-btn tab-today active"    onclick="switchTab('today')">Today</button>
-        <button class="tab-btn tab-tomorrow"        onclick="switchTab('tomorrow')">Tomorrow</button>
-        <button class="tab-btn tab-recurring"       onclick="switchTab('recurring')">Recurring</button>
-        <button class="tab-btn tab-backlog"         onclick="switchTab('backlog')">Backlog</button>
-        <button class="tab-btn tab-meetings"        onclick="switchTab('meetings')">Meetings</button>
+        <button class="tab-btn tab-today active" onclick="switchTab('today')">Today</button>
+        <button class="tab-btn tab-tomorrow"     onclick="switchTab('tomorrow')">Tomorrow</button>
+        <button class="tab-btn tab-recurring"    onclick="switchTab('recurring')">Recurring</button>
+        <button class="tab-btn tab-backlog"      onclick="switchTab('backlog')">Backlog</button>
+        <button class="tab-btn tab-meetings"     onclick="switchTab('meetings')">Meetings</button>
       </div>
-
-      <!-- TODAY -->
       <div class="tab-pane active" id="pane-today">
         <div class="panel">
           <div class="panel-header">
@@ -269,7 +207,7 @@
             <div class="task-list" id="todayList"></div>
             <div class="add-area">
               <input class="add-input" id="todayInput" placeholder="Add a task for today..." onkeydown="if(event.key==='Enter')addTask('today')">
-              <label class="conf-label" title="Confidential"><input type="checkbox" id="todayConf"> &#128274;</label>
+              <label class="conf-label"><input type="checkbox" id="todayConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('today')">+ Add</button>
             </div>
           </div>
@@ -280,14 +218,12 @@
             <div class="task-list" id="newList"></div>
             <div class="add-area">
               <input class="add-input" id="newInput" placeholder="Something that came up today..." onkeydown="if(event.key==='Enter')addTask('new')">
-              <label class="conf-label" title="Confidential"><input type="checkbox" id="newConf"> &#128274;</label>
+              <label class="conf-label"><input type="checkbox" id="newConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('new')">+ Add</button>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- TOMORROW -->
       <div class="tab-pane" id="pane-tomorrow">
         <div class="panel">
           <div class="panel-header">
@@ -301,21 +237,19 @@
             <div class="task-list" id="tomorrowList"></div>
             <div class="add-area">
               <input class="add-input" id="tomorrowInput" placeholder="Plan a task for tomorrow..." onkeydown="if(event.key==='Enter')addTask('tomorrow')">
-              <label class="conf-label" title="Confidential"><input type="checkbox" id="tomorrowConf"> &#128274;</label>
+              <label class="conf-label"><input type="checkbox" id="tomorrowConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('tomorrow')">+ Add</button>
             </div>
-            <div class="notice n-tmrw" style="margin-top:12px;">Completely separate from today. Hit Start Tomorrow on the right when your new day begins.</div>
+            <div class="notice n-tmrw" style="margin-top:12px">Separate from today. Hit Start Tomorrow on the right when your new day begins.</div>
           </div>
         </div>
       </div>
-
-      <!-- RECURRING -->
       <div class="tab-pane" id="pane-recurring">
         <div class="panel">
           <div class="panel-header"><span class="panel-title"><span class="dot dot-recurring"></span>Regular / recurring tasks</span></div>
           <div class="section">
             <div class="task-list" id="recurringList"></div>
-            <div class="add-area" style="margin-top:12px;">
+            <div class="add-area" style="margin-top:12px">
               <input class="add-input" id="recurringInput" placeholder="Add a regular task to your library..." onkeydown="if(event.key==='Enter')addRecurring()">
               <button class="add-btn" onclick="addRecurring()">+ Add</button>
             </div>
@@ -323,51 +257,42 @@
           </div>
         </div>
       </div>
-
-      <!-- BACKLOG -->
       <div class="tab-pane" id="pane-backlog">
         <div class="panel">
           <div class="panel-header">
             <span class="panel-title"><span class="dot dot-backlog"></span>Backlog</span>
-            <span style="font-size:10px;color:var(--text-muted);">Not today or tomorrow</span>
+            <span style="font-size:10px;color:var(--text-muted)">Not today or tomorrow</span>
           </div>
           <div class="section">
             <div class="task-list" id="backlogList"></div>
             <div class="add-area">
               <input class="add-input" id="backlogInput" placeholder="Something to remember but not urgent..." onkeydown="if(event.key==='Enter')addTask('backlog')">
-              <label class="conf-label" title="Confidential"><input type="checkbox" id="backlogConf"> &#128274;</label>
+              <label class="conf-label"><input type="checkbox" id="backlogConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('backlog')">+ Add</button>
             </div>
-            <div class="notice n-conf" style="margin-top:12px;">Tasks marked confidential never appear in any Teams post.</div>
+            <div class="notice n-conf" style="margin-top:12px">Tasks marked confidential never appear in any Teams post.</div>
           </div>
         </div>
       </div>
-
-      <!-- MEETINGS -->
       <div class="tab-pane" id="pane-meetings">
         <div class="panel">
           <div class="panel-header">
             <span class="panel-title"><span class="dot dot-meeting"></span>My Meetings</span>
-            <button class="hdr-btn" onclick="openNewMeetingModal()">+ New meeting</button>
+            <button class="hdr-btn" onclick="promptNewMeeting()">+ New meeting</button>
           </div>
-          <div class="section">
-            <div id="meetingTabList"></div>
-          </div>
+          <div class="section"><div id="meetingTabList"></div></div>
         </div>
         <div id="meetingDetail">
           <div class="no-meeting-selected">Select a meeting above to view agenda and actions</div>
         </div>
       </div>
-
     </div>
-
-    <!-- RIGHT COL -->
     <div class="right-col">
       <div class="panel">
         <div class="stats-row">
           <div class="stat"><div class="stat-num c-today" id="statToday">0</div><div class="stat-label">Today</div></div>
-          <div class="stat"><div class="stat-num c-done" id="statDone">0</div><div class="stat-label">Done</div></div>
-          <div class="stat"><div class="stat-num c-tmrw" id="statTmrw">0</div><div class="stat-label">Tmrw</div></div>
+          <div class="stat"><div class="stat-num c-done"  id="statDone">0</div><div class="stat-label">Done</div></div>
+          <div class="stat"><div class="stat-num c-tmrw"  id="statTmrw">0</div><div class="stat-label">Tmrw</div></div>
           <div class="stat"><div class="stat-num c-backlog" id="statBacklog">0</div><div class="stat-label">Backlog</div></div>
         </div>
       </div>
@@ -385,875 +310,355 @@
           <button class="copy-btn" id="eodCopyBtn" onclick="copyPost('eod')">Copy for Teams</button>
         </div>
       </div>
-      <div class="panel" style="border-color:#b0cfcf;">
-        <div class="panel-header" style="background:#edf5f5;">
-          <span class="panel-title" style="color:var(--tomorrow);">Tomorrow's Stand-up (draft)</span>
+      <div class="panel" style="border-color:#b0cfcf">
+        <div class="panel-header" style="background:#edf5f5">
+          <span class="panel-title" style="color:var(--tomorrow)">Tomorrow's Stand-up (draft)</span>
         </div>
         <div class="post-content">
-          <div class="post-box" id="tomorrowPost" style="border-color:#b0cfcf;background:#edf5f5;"></div>
-          <button class="copy-btn" id="tomorrowCopyBtn" onclick="copyPost('tomorrow')" style="background:var(--tomorrow);">Copy for Teams</button>
+          <div class="post-box" id="tomorrowPost" style="border-color:#b0cfcf;background:#edf5f5"></div>
+          <button class="copy-btn" id="tomorrowCopyBtn" onclick="copyPost('tomorrow')" style="background:var(--tomorrow)">Copy for Teams</button>
           <button class="start-btn" onclick="startTomorrow()">Start Tomorrow - move to Today</button>
         </div>
       </div>
-      <div class="panel" style="border-color:#c0b8e8;">
-        <div class="panel-header" style="background:#f0eef8;">
-          <span class="panel-title" style="color:var(--meeting);">Meeting Summary</span>
+      <div class="panel" style="border-color:#c0b8e8">
+        <div class="panel-header" style="background:#f0eef8">
+          <span class="panel-title" style="color:var(--meeting)">Meeting Summary</span>
         </div>
         <div class="post-content">
-          <div class="post-box" id="meetingPost" style="border-color:#c0b8e8;background:#f0eef8;font-size:11px;">Select a meeting in the Meetings tab to generate a summary</div>
-          <button class="copy-btn" id="meetingCopyBtn" onclick="copyPost('meeting')" style="background:var(--meeting);">Copy for Teams</button>
+          <div class="post-box" id="meetingPost" style="border-color:#c0b8e8;background:#f0eef8;font-size:11px">Select a meeting in the Meetings tab to generate a summary</div>
+          <button class="copy-btn" id="meetingCopyBtn" onclick="copyPost('meeting')" style="background:var(--meeting)">Copy for Teams</button>
         </div>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- New meeting modal -->
-<div class="modal-overlay" id="newMeetingModal">
-  <div class="modal">
-    <div class="modal-header"><h3>New Meeting</h3></div>
-    <div class="modal-body">
-      <div><label class="modal-label">Meeting name</label><input class="modal-input" id="newMeetingName" placeholder="e.g. Weekly Team Meeting" onkeydown="if(event.key==='Enter')createMeeting()"></div>
-      <div><label class="modal-label">Cadence (optional)</label><input class="modal-input" id="newMeetingCadence" placeholder="e.g. Every Monday 9am"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-btn" onclick="closeNewMeetingModal()">Cancel</button>
-      <button class="modal-btn primary" onclick="createMeeting()">Create</button>
     </div>
   </div>
 </div>
 
 <script>
-// =============================================
 const SUPABASE_URL      = 'https://yqeohnvtdxjvufskusff.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZW9obnZ0ZHhqdnVmc2t1c2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ1NTMsImV4cCI6MjA5MzU3MDU1M30.Wh_MD8rJ5z0dfdfj_v8wZjt3W0IDIawzxov0muRfTEo';
-const APP_KEY  = 'dailytasks_v1';
-const PIN_STORE= 'dtm_pin_v1';
-// =============================================
+const APP_KEY    = 'dailytasks_v1';
+const PIN_STORE  = 'dtm_pin_v1';
+const FIXED_UID  = '3d7ff7f8-c7c1-420e-ab0a-418862cf779e';
+const FIXED_EMAIL= 'sian.fussell@gmail.com';
 
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// State - tasks
-var tasks       = [];
-var recurring   = [];
-var currentUser = null;
+var tasks=[],recurring=[],meetings=[],sessions={},agendaItems={},mActions={};
+var activeMeeting=null,activeSession=null;
+var pinBuffer='',pinSetupFirst='',pinMode='enter';
 
-// State - meetings
-var meetings      = [];
-var sessions      = {};
-var agendaItems   = {};
-var mActions      = {};
-var activeMeeting = null;
-var activeSession = null;
+document.getElementById('dateDisplay').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-// PIN state
-var pinBuffer     = '';
-var pinMode       = 'enter';
-var setupEmail    = '';
-var setupPinFirst = '';
-
-// Date
-document.getElementById('dateDisplay').textContent =
-  new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-
-// Sync
-function setSyncState(s) {
-  document.getElementById('syncDot').className    = 'sync-dot' + (s==='syncing'?' syncing':s==='error'?' error':'');
-  document.getElementById('syncLabel').textContent = s==='syncing'?'Saving...':s==='error'?'Error':'Synced';
+function setSyncState(s){
+  document.getElementById('syncDot').className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':'');
+  document.getElementById('syncLabel').textContent=s==='syncing'?'Saving...':s==='error'?'Error':'Synced';
 }
 
-// =============================================
-// PIN AUTH
-// =============================================
-function hiddenEmail(email) {
-  // Always use the established account regardless of email input
-  return 'sian.fussell@gmail.com';
+async function sha256(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-function initPinScreen() {
-  document.getElementById('authScreen').style.display = 'block';
-  var stored = localStorage.getItem(PIN_STORE);
-  if (!stored) {
-    pinMode = 'setup_email';
-    document.getElementById('pinSubtitle').textContent = 'First time - enter your email';
-    document.getElementById('pinMsg').textContent = 'Used only if you need to reset your PIN.';
-    document.getElementById('pinKeypad').style.display = 'none';
-    document.querySelector('.pin-dots').style.display = 'none';
-    var pinBody = document.getElementById('pinBody');
-    var emailDiv = document.createElement('div');
-    emailDiv.id = 'emailSetupDiv';
-    emailDiv.style.cssText = 'width:100%;display:flex;flex-direction:column;gap:8px;';
-    emailDiv.innerHTML = '<input class="pin-email-input" type="email" id="setupEmailInput" placeholder="you@example.com"><button class="pin-continue-btn" onclick="confirmSetupEmail()">Continue</button>';
-    pinBody.insertBefore(emailDiv, document.getElementById('pinMsg'));
-  } else {
-    pinMode = 'enter';
-    document.getElementById('pinSubtitle').textContent = 'Enter your PIN';
-    document.getElementById('resetLink').style.display = 'inline';
+function updateDots(state){
+  for(var i=0;i<4;i++){
+    var d=document.getElementById('pd'+i);
+    d.className='pin-dot';
+    if(state==='error')d.classList.add('error');
+    else if(state==='success')d.classList.add('success');
+    else if(i<pinBuffer.length)d.classList.add('filled');
   }
 }
 
-function confirmSetupEmail() {
-  var email = document.getElementById('setupEmailInput').value.trim();
-  if (!email || !email.includes('@')) {
-    document.getElementById('pinMsg').textContent = 'Please enter a valid email.';
-    document.getElementById('pinMsg').className = 'pin-msg error';
-    return;
-  }
-  setupEmail = email;
-  document.getElementById('emailSetupDiv').remove();
-  document.querySelector('.pin-dots').style.display = 'flex';
-  document.getElementById('pinKeypad').style.display = 'grid';
-  document.getElementById('pinMsg').textContent = 'Choose a 4-digit PIN.';
-  document.getElementById('pinMsg').className = 'pin-msg';
-  document.getElementById('pinSubtitle').textContent = 'Choose your PIN';
-  pinMode = 'setup_pin';
+function pinPress(digit){
+  if(pinBuffer.length>=4)return;
+  pinBuffer+=digit; updateDots();
+  if(pinBuffer.length===4)setTimeout(handlePin,120);
 }
+function pinDel(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}}
 
-function pinPress(digit) {
-  if (pinBuffer.length >= 4) return;
-  pinBuffer += digit; updateDots();
-  if (pinBuffer.length === 4) setTimeout(handlePinComplete, 120);
-}
-
-function pinDel() {
-  if (pinBuffer.length > 0) { pinBuffer = pinBuffer.slice(0,-1); updateDots(); }
-}
-
-function updateDots(state) {
-  for (var i = 0; i < 4; i++) {
-    var d = document.getElementById('pd' + i);
-    d.className = 'pin-dot';
-    if (state === 'error') d.classList.add('error');
-    else if (state === 'success') d.classList.add('success');
-    else if (i < pinBuffer.length) d.classList.add('filled');
-  }
-}
-
-async function handlePinComplete() {
-  if (pinMode === 'setup_pin') {
-    setupPinFirst = pinBuffer; pinBuffer = ''; updateDots();
-    pinMode = 'setup_confirm';
-    document.getElementById('pinSubtitle').textContent = 'Confirm your PIN';
-    document.getElementById('pinMsg').textContent = 'Enter your PIN again.';
-    document.getElementById('pinMsg').className = 'pin-msg';
-    return;
-  }
-  if (pinMode === 'setup_confirm') {
-    if (pinBuffer !== setupPinFirst) {
-      updateDots('error');
-      document.getElementById('pinMsg').textContent = "PINs don't match - try again.";
-      document.getElementById('pinMsg').className = 'pin-msg error';
-      setTimeout(function() {
-        pinBuffer=''; updateDots(); pinMode='setup_pin';
-        document.getElementById('pinSubtitle').textContent='Choose your PIN';
-        document.getElementById('pinMsg').textContent='Choose a 4-digit PIN.';
-        document.getElementById('pinMsg').className='pin-msg';
-      }, 1200);
+async function handlePin(){
+  var storedHash=localStorage.getItem(PIN_STORE);
+  if(!storedHash){
+    if(pinMode==='enter'){
+      pinMode='setup_first'; pinSetupFirst=pinBuffer; pinBuffer=''; updateDots();
+      document.getElementById('pinSubtitle').textContent='Confirm your PIN';
+      document.getElementById('pinMsg').textContent='Enter the same PIN again to confirm.';
+      document.getElementById('pinMsg').className='pin-msg';
       return;
     }
-    document.getElementById('pinMsg').textContent = 'Setting up...';
-    document.getElementById('pinMsg').className = 'pin-msg';
-    var email    = hiddenEmail(setupEmail);
-    var password = pinBuffer + '_' + APP_KEY;
-    var res = await sb.auth.signUp({ email: email, password: password });
-    if (res.error) res = await sb.auth.signInWithPassword({ email: email, password: password });
-    if (res.error) {
-      updateDots('error');
-      document.getElementById('pinMsg').textContent = res.error.message;
-      document.getElementById('pinMsg').className = 'pin-msg error';
-      pinBuffer=''; setTimeout(function(){updateDots();}, 1200);
-      return;
-    }
-    localStorage.setItem(PIN_STORE, JSON.stringify({ email: setupEmail }));
-    updateDots('success');
-    document.getElementById('pinMsg').textContent = 'PIN set! Loading...';
-    document.getElementById('pinMsg').className = 'pin-msg success';
-    setTimeout(async function() {
-      var session = res.data.session || (res.data.user ? { user: res.data.user } : null);
-      if (session) {
-        currentUser = res.data.user;
-        document.getElementById('authScreen').style.display  = 'none';
-        document.getElementById('appScreen').style.display   = 'block';
-        await loadData();
+    if(pinMode==='setup_first'){
+      if(pinBuffer!==pinSetupFirst){
+        updateDots('error');
+        document.getElementById('pinMsg').textContent="PINs don't match - try again.";
+        document.getElementById('pinMsg').className='pin-msg error';
+        setTimeout(function(){pinBuffer='';pinSetupFirst='';pinMode='enter';updateDots();document.getElementById('pinSubtitle').textContent='Choose a 4-digit PIN';document.getElementById('pinMsg').textContent='';document.getElementById('pinMsg').className='pin-msg';},1400);
+        return;
       }
-    }, 600);
-    return;
-  }
-  if (pinMode === 'enter') {
-    var stored = JSON.parse(localStorage.getItem(PIN_STORE) || '{}');
-    if (!stored.email) { localStorage.removeItem(PIN_STORE); location.reload(); return; }
-    var email    = hiddenEmail(stored.email);
-    var password = pinBuffer + '_' + APP_KEY;
-    document.getElementById('pinMsg').textContent = 'Checking...';
-    document.getElementById('pinMsg').className = 'pin-msg';
-    var res = await sb.auth.signInWithPassword({ email: email, password: password });
-    if (res.error) {
-      updateDots('error');
-      document.getElementById('pinMsg').textContent = 'Incorrect PIN.';
-      document.getElementById('pinMsg').className = 'pin-msg error';
-      pinBuffer='';
-      setTimeout(function() { updateDots(); document.getElementById('pinMsg').textContent=''; document.getElementById('pinMsg').className='pin-msg'; }, 1200);
-    } else {
+      var hash=await sha256(pinBuffer+APP_KEY);
+      localStorage.setItem(PIN_STORE,hash);
       updateDots('success');
-      currentUser = res.data.user;
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display  = 'block';
-      await loadData();
+      document.getElementById('pinMsg').textContent='PIN set! Loading...';
+      document.getElementById('pinMsg').className='pin-msg success';
+      await signInToSupabase(pinBuffer);
+      return;
     }
   }
+  var hash=await sha256(pinBuffer+APP_KEY);
+  if(hash!==storedHash){
+    updateDots('error');
+    document.getElementById('pinMsg').textContent='Incorrect PIN.';
+    document.getElementById('pinMsg').className='pin-msg error';
+    pinBuffer='';
+    setTimeout(function(){updateDots();document.getElementById('pinMsg').textContent='';document.getElementById('pinMsg').className='pin-msg';},1200);
+    return;
+  }
+  updateDots('success');
+  await signInToSupabase(pinBuffer);
 }
 
-async function sendReset() {
-  var stored = JSON.parse(localStorage.getItem(PIN_STORE)||'{}');
-  if (!stored.email) { alert('No email on record.'); return; }
-  await sb.auth.resetPasswordForEmail(hiddenEmail(stored.email));
-  document.getElementById('pinMsg').textContent = 'Reset link sent.';
-  document.getElementById('pinMsg').className = 'pin-msg success';
+async function signInToSupabase(pin){
+  var password=pin+'_'+APP_KEY;
+  var res=await sb.auth.signInWithPassword({email:FIXED_EMAIL,password:password});
+  if(res.error){
+    var res2=await sb.auth.signUp({email:FIXED_EMAIL,password:password});
+    if(res2.error){
+      document.getElementById('pinMsg').textContent='Auth error: '+res2.error.message;
+      document.getElementById('pinMsg').className='pin-msg error';
+      pinBuffer='';updateDots();return;
+    }
+  }
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  loadData();
 }
 
-async function signOut() {
-  tasks=[]; recurring=[]; meetings=[]; sessions={}; agendaItems={}; mActions={};
-  activeMeeting=null; activeSession=null;
+async function signOut(){
+  tasks=[];recurring=[];meetings=[];sessions={};agendaItems={};mActions={};
+  activeMeeting=null;activeSession=null;
   await sb.auth.signOut();
-  document.getElementById('appScreen').style.display = 'none';
-  pinBuffer=''; updateDots();
-  document.getElementById('pinMsg').textContent='';
-  document.getElementById('pinMsg').className='pin-msg';
+  pinBuffer='';pinMode='enter';pinSetupFirst='';updateDots();
+  document.getElementById('pinMsg').textContent='';document.getElementById('pinMsg').className='pin-msg';
   document.getElementById('pinSubtitle').textContent='Enter your PIN';
+  document.getElementById('appScreen').style.display='none';
   document.getElementById('authScreen').style.display='block';
 }
 
-// =============================================
-// DATA LAYER
-// =============================================
-async function loadData() {
-  var uid = '3d7ff7f8-c7c1-420e-ab0a-418862cf779e';
-  var results = await Promise.all([
-    sb.from('tasks').select('*').eq('user_id', uid).order('created_at'),
-    sb.from('recurring').select('*').eq('user_id', uid).order('created_at'),
-    sb.from('meetings').select('*').eq('user_id', uid).order('created_at'),
-    sb.from('meeting_sessions').select('*').eq('user_id', uid).order('date', {ascending:false}),
-    sb.from('agenda_items').select('*').eq('user_id', uid).order('created_at'),
-    sb.from('meeting_actions').select('*').eq('user_id', uid).order('created_at')
-  ]);
-  tasks     = results[0].data || [];
-  recurring = results[1].data || [];
-  meetings  = results[2].data || [];
-  sessions  = {}; agendaItems = {}; mActions = {};
-  for (var s of (results[3].data||[])) {
-    if (!sessions[s.meeting_id]) sessions[s.meeting_id]=[];
-    sessions[s.meeting_id].push(s);
-  }
-  for (var a of (results[4].data||[])) {
-    if (!agendaItems[a.session_id]) agendaItems[a.session_id]=[];
-    agendaItems[a.session_id].push(a);
-  }
-  for (var ac of (results[5].data||[])) {
-    if (!mActions[ac.session_id]) mActions[ac.session_id]=[];
-    mActions[ac.session_id].push(ac);
-  }
+async function loadData(){
+  setSyncState('syncing');
+  try{
+    var r=await Promise.all([
+      sb.from('tasks').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('recurring').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('meetings').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('meeting_sessions').select('*').eq('user_id',FIXED_UID).order('date',{ascending:false}),
+      sb.from('agenda_items').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('meeting_actions').select('*').eq('user_id',FIXED_UID).order('created_at')
+    ]);
+    tasks=r[0].data||[];recurring=r[1].data||[];meetings=r[2].data||[];
+    sessions={};agendaItems={};mActions={};
+    for(var s of(r[3].data||[])){if(!sessions[s.meeting_id])sessions[s.meeting_id]=[];sessions[s.meeting_id].push(s);}
+    for(var a of(r[4].data||[])){if(!agendaItems[a.session_id])agendaItems[a.session_id]=[];agendaItems[a.session_id].push(a);}
+    for(var ac of(r[5].data||[])){if(!mActions[ac.session_id])mActions[ac.session_id]=[];mActions[ac.session_id].push(ac);}
+    setSyncState('synced');
+  }catch(e){setSyncState('error');console.error(e);}
   render();
 }
 
-// Task DB helpers
-async function dbInsertTask(t) {
+async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbUpdateTask(id,c){setSyncState('syncing');await sb.from('tasks').update(c).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function dbDeleteTask(id){setSyncState('syncing');await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function dbInsertRecurring(text){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbDeleteRecurring(id){setSyncState('syncing');await sb.from('recurring').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+  document.getElementById('pane-'+tab).classList.add('active');
+  document.querySelector('.tab-'+tab).classList.add('active');
+}
+
+async function addTask(bucket){
+  var input=document.getElementById(bucket+'Input'),confEl=document.getElementById(bucket+'Conf');
+  var text=input.value.trim();if(!text)return;
+  input.value='';var isConf=confEl?confEl.checked:false;if(confEl)confEl.checked=false;
+  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:text,bucket:bucket,done:false,confidential:isConf});render();
+  var saved=await dbInsertTask({text:text,bucket:bucket,done:false,confidential:isConf});
+  if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
+}
+async function addRecurring(){
+  var input=document.getElementById('recurringInput'),text=input.value.trim();if(!text)return;input.value='';
+  var tmp='tmp_'+Date.now();recurring.push({id:tmp,text:text});render();
+  var saved=await dbInsertRecurring(text);
+  if(saved){recurring=recurring.filter(function(r){return r.id!==tmp});recurring.push(saved);render();}
+}
+async function copyRecurringTo(rid,bucket){
+  var r=recurring.find(function(x){return x.id===rid});if(!r)return;
+  var btn=document.getElementById('rb-'+rid+'-'+bucket);if(btn){btn.textContent='Done';btn.disabled=true;}
+  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:r.text,bucket:bucket,done:false,confidential:false});render();
+  var saved=await dbInsertTask({text:r.text,bucket:bucket,done:false,confidential:false});
+  if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
+  if(btn)setTimeout(function(){btn.textContent=bucket==='today'?'Today':'Tomorrow';btn.disabled=false;},1600);
+}
+async function deleteRecurring(rid){if(!confirm('Remove from library?'))return;recurring=recurring.filter(function(x){return x.id!==rid});render();await dbDeleteRecurring(rid);}
+async function toggleDone(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.done=!t.done;render();await dbUpdateTask(id,{done:t.done});}
+async function moveTask(id,bucket){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.bucket=bucket;t.done=false;render();await dbUpdateTask(id,{bucket:bucket,done:false});}
+async function deleteTask(id){tasks=tasks.filter(function(x){return x.id!==id});render();await dbDeleteTask(id);}
+
+function pullFromBacklog(dest){
+  var bl=tasks.filter(function(t){return t.bucket==='backlog'});if(!bl.length){alert('Backlog is empty!');return;}
+  var list=bl.map(function(t,i){return(i+1)+'. '+(t.confidential?'[private] ':'')+t.text;}).join('\n');
+  var ans=prompt('Pull into '+dest+':\n\n'+list+'\n\nEnter number:');if(!ans)return;
+  var idx=parseInt(ans)-1;if(idx>=0&&idx<bl.length)moveTask(bl[idx].id,dest);
+}
+async function carryForward(){
+  var u=tasks.filter(function(t){return t.bucket==='today'&&!t.done});if(!u.length){alert('No unfinished tasks today!');return;}
+  for(var t of u){var tmp='tmp_'+Date.now()+Math.random();tasks.push({id:tmp,text:t.text,bucket:'tomorrow',done:false,confidential:t.confidential});render();var saved=await dbInsertTask({text:t.text,bucket:'tomorrow',done:false,confidential:t.confidential});if(saved){tasks=tasks.filter(function(x){return x.id!==tmp});tasks.push(saved);}}
+  render();switchTab('tomorrow');
+}
+async function startTomorrow(){
+  var tmrw=tasks.filter(function(t){return t.bucket==='tomorrow'});
+  if(!tmrw.length&&!confirm('No tasks planned for tomorrow yet. Start fresh day anyway?'))return;
+  var toDelete=tasks.filter(function(t){return t.done||t.bucket==='new'}).map(function(t){return t.id});
+  tasks=tasks.filter(function(t){return!t.done&&t.bucket!=='new'});
+  tasks.filter(function(t){return t.bucket==='today'}).forEach(function(t){t.done=false;});
+  tasks.filter(function(t){return t.bucket==='tomorrow'}).forEach(function(t){t.bucket='today';t.done=false;});
+  render();switchTab('today');setSyncState('syncing');
+  for(var id of toDelete){if(!String(id).startsWith('tmp_'))await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);}
+  for(var t of tasks.filter(function(x){return x.bucket==='today'})){if(!String(t.id).startsWith('tmp_'))await dbUpdateTask(t.id,{bucket:'today',done:false});}
+  setSyncState('synced');
+}
+
+function promptNewMeeting(){
+  var name=prompt('Meeting name:');if(!name||!name.trim())return;
+  var cadence=prompt('Cadence (optional, e.g. Every Monday 9am):')||'';
+  doCreateMeeting(name.trim(),cadence.trim());
+}
+async function doCreateMeeting(name,cadence){
   setSyncState('syncing');
-  var res = await sb.from('tasks').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', text: t.text, bucket: t.bucket, done: t.done, confidential: t.confidential }).select().single();
+  var res=await sb.from('meetings').insert({user_id:FIXED_UID,name:name,cadence:cadence}).select().single();
   setSyncState(res.error?'error':'synced');
-  return res.data;
+  if(res.error){alert('Error: '+res.error.message);return;}
+  if(res.data){meetings.push(res.data);renderMeetingList();selectMeeting(res.data.id);}
 }
-async function dbUpdateTask(id, changes) {
-  setSyncState('syncing');
-  await sb.from('tasks').update(changes).eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  setSyncState('synced');
-}
-async function dbDeleteTask(id) {
-  setSyncState('syncing');
-  await sb.from('tasks').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  setSyncState('synced');
-}
-async function dbInsertRecurring(text) {
-  setSyncState('syncing');
-  var res = await sb.from('recurring').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', text: text }).select().single();
-  setSyncState(res.error?'error':'synced');
-  return res.data;
-}
-async function dbDeleteRecurring(id) {
-  setSyncState('syncing');
-  await sb.from('recurring').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  setSyncState('synced');
-}
-
-// =============================================
-// TABS
-// =============================================
-function switchTab(tab) {
-  document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
-  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
-  document.getElementById('pane-' + tab).classList.add('active');
-  document.querySelector('.tab-' + tab).classList.add('active');
-}
-
-// =============================================
-// TASK ACTIONS
-// =============================================
-async function addTask(bucket) {
-  var input  = document.getElementById(bucket + 'Input');
-  var confEl = document.getElementById(bucket + 'Conf');
-  var text   = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  var isConf = confEl ? confEl.checked : false;
-  if (confEl) confEl.checked = false;
-  var tempId = 'tmp_' + Date.now();
-  tasks.push({ id: tempId, text: text, bucket: bucket, done: false, confidential: isConf });
-  render();
-  var saved = await dbInsertTask({ text: text, bucket: bucket, done: false, confidential: isConf });
-  if (saved) { tasks = tasks.filter(function(t){ return t.id !== tempId; }); tasks.push(saved); render(); }
-}
-
-async function addRecurring() {
-  var input = document.getElementById('recurringInput');
-  var text  = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  var tempId = 'tmp_' + Date.now();
-  recurring.push({ id: tempId, text: text });
-  render();
-  var saved = await dbInsertRecurring(text);
-  if (saved) { recurring = recurring.filter(function(r){ return r.id !== tempId; }); recurring.push(saved); render(); }
-}
-
-async function copyRecurringTo(rid, bucket) {
-  var r = recurring.find(function(x){ return x.id === rid; });
-  if (!r) return;
-  var btn = document.getElementById('rb-' + rid + '-' + bucket);
-  if (btn) { btn.textContent = 'Done'; btn.disabled = true; }
-  var tempId = 'tmp_' + Date.now();
-  tasks.push({ id: tempId, text: r.text, bucket: bucket, done: false, confidential: false });
-  render();
-  var saved = await dbInsertTask({ text: r.text, bucket: bucket, done: false, confidential: false });
-  if (saved) { tasks = tasks.filter(function(t){ return t.id !== tempId; }); tasks.push(saved); render(); }
-  if (btn) setTimeout(function(){ btn.textContent = bucket==='today'?'Today':'Tomorrow'; btn.disabled=false; }, 1600);
-}
-
-async function deleteRecurring(rid) {
-  if (!confirm('Remove from library?')) return;
-  recurring = recurring.filter(function(x){ return x.id !== rid; });
-  render();
-  await dbDeleteRecurring(rid);
-}
-
-async function toggleDone(id) {
-  var t = tasks.find(function(x){ return x.id === id; });
-  if (!t) return;
-  t.done = !t.done; render();
-  await dbUpdateTask(id, { done: t.done });
-}
-
-async function moveTask(id, bucket) {
-  var t = tasks.find(function(x){ return x.id === id; });
-  if (!t) return;
-  t.bucket = bucket; t.done = false; render();
-  await dbUpdateTask(id, { bucket: bucket, done: false });
-}
-
-async function deleteTask(id) {
-  tasks = tasks.filter(function(x){ return x.id !== id; }); render();
-  await dbDeleteTask(id);
-}
-
-function pullFromBacklog(dest) {
-  var bl = tasks.filter(function(t){ return t.bucket === 'backlog'; });
-  if (!bl.length) { alert('Backlog is empty!'); return; }
-  var list = bl.map(function(t,i){ return (i+1) + '. ' + (t.confidential?'[private] ':'') + t.text; }).join('\n');
-  var ans  = prompt('Pull into ' + dest + ':\n\n' + list + '\n\nEnter number:');
-  if (!ans) return;
-  var idx = parseInt(ans) - 1;
-  if (idx >= 0 && idx < bl.length) moveTask(bl[idx].id, dest);
-}
-
-async function carryForward() {
-  var unfinished = tasks.filter(function(t){ return t.bucket==='today' && !t.done; });
-  if (!unfinished.length) { alert('No unfinished tasks today!'); return; }
-  for (var t of unfinished) {
-    var tempId = 'tmp_' + Date.now() + Math.random();
-    tasks.push({ id: tempId, text: t.text, bucket: 'tomorrow', done: false, confidential: t.confidential });
-    render();
-    var saved = await dbInsertTask({ text: t.text, bucket: 'tomorrow', done: false, confidential: t.confidential });
-    if (saved) { tasks = tasks.filter(function(x){ return x.id !== tempId; }); tasks.push(saved); }
-  }
-  render(); switchTab('tomorrow');
-}
-
-async function startTomorrow() {
-  var tmrw = tasks.filter(function(t){ return t.bucket === 'tomorrow'; });
-  if (!tmrw.length && !confirm('No tasks planned for tomorrow yet. Start fresh day anyway?')) return;
-  var toDelete = tasks.filter(function(t){ return t.done || t.bucket==='new'; }).map(function(t){ return t.id; });
-  tasks = tasks.filter(function(t){ return !t.done && t.bucket !== 'new'; });
-  tasks.filter(function(t){ return t.bucket==='today'; }).forEach(function(t){ t.done=false; });
-  tasks.filter(function(t){ return t.bucket==='tomorrow'; }).forEach(function(t){ t.bucket='today'; t.done=false; });
-  render(); switchTab('today');
-  setSyncState('syncing');
-  for (var id of toDelete) {
-    if (!String(id).startsWith('tmp_')) await sb.from('tasks').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  }
-  for (var t of tasks.filter(function(x){ return x.bucket==='today'; })) {
-    if (!String(t.id).startsWith('tmp_')) await dbUpdateTask(t.id, { bucket: 'today', done: false });
-  }
-  setSyncState('synced');
-}
-
-// =============================================
-// MEETINGS
-// =============================================
-function openNewMeetingModal() {
-  var name = prompt('Meeting name:');
-  if (!name || !name.trim()) return;
-  var cadence = prompt('Cadence (optional, e.g. Every Monday 9am):') || '';
-  doCreateMeeting(name.trim(), cadence.trim());
-}
-
-function closeNewMeetingModal() {}
-
-async function createMeeting() {}
-
-async function doCreateMeeting(name, cadence) {
-async function doCreateMeeting(name, cadence) {
-  setSyncState('syncing');
-  var res = await sb.from('meetings').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', name: name, cadence: cadence }).select().single();
-  setSyncState(res.error?'error':'synced');
-  if (res.error) { alert('Error: ' + res.error.message); return; }
-  if (res.data) { meetings.push(res.data); renderMeetingList(); selectMeeting(res.data.id); }
-}
-
-async function deleteMeeting(id) {
-  if (!confirm('Delete this meeting and all its history?')) return;
-  await sb.from('meetings').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  meetings = meetings.filter(function(m){ return m.id !== id; });
-  delete sessions[id];
-  if (activeMeeting === id) { activeMeeting=null; activeSession=null; renderMeetingDetail(); }
+async function deleteMeeting(id){
+  if(!confirm('Delete this meeting and all its history?'))return;
+  await sb.from('meetings').delete().eq('id',id).eq('user_id',FIXED_UID);
+  meetings=meetings.filter(function(m){return m.id!==id});delete sessions[id];
+  if(activeMeeting===id){activeMeeting=null;activeSession=null;renderMeetingDetail();}
   renderMeetingList();
 }
-
-async function startNewSession(meetingId) {
+async function startNewSession(meetingId){
   setSyncState('syncing');
-  var date = new Date().toISOString().split('T')[0];
-  var res = await sb.from('meeting_sessions').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', meeting_id: meetingId, date: date }).select().single();
-  setSyncState(res.error?'error':'synced');
-  if (!res.data) return;
-  if (!sessions[meetingId]) sessions[meetingId]=[];
-  sessions[meetingId].unshift(res.data);
-  // Carry forward incomplete actions
-  var prevSessions = sessions[meetingId].filter(function(s){ return s.id !== res.data.id; });
-  if (prevSessions.length > 0) {
-    var prevId = prevSessions[0].id;
-    var prevActions = (mActions[prevId]||[]).filter(function(a){ return !a.done; });
-    for (var pa of prevActions) {
-      var newRes = await sb.from('meeting_actions').insert({
-        user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', session_id: res.data.id,
-        text: pa.text, done: false, assignee: pa.assignee, carried_from: prevId
-      }).select().single();
-      if (newRes.data) {
-        if (!mActions[res.data.id]) mActions[res.data.id]=[];
-        mActions[res.data.id].push(newRes.data);
-      }
-    }
-  }
-  activeSession = res.data.id;
-  renderMeetingList();
-  renderMeetingDetail();
+  var date=new Date().toISOString().split('T')[0];
+  var res=await sb.from('meeting_sessions').insert({user_id:FIXED_UID,meeting_id:meetingId,date:date}).select().single();
+  setSyncState(res.error?'error':'synced');if(!res.data)return;
+  if(!sessions[meetingId])sessions[meetingId]=[];sessions[meetingId].unshift(res.data);
+  var prev=sessions[meetingId].filter(function(s){return s.id!==res.data.id});
+  if(prev.length>0){var prevId=prev[0].id;var pa=(mActions[prevId]||[]).filter(function(a){return!a.done});for(var p of pa){var r2=await sb.from('meeting_actions').insert({user_id:FIXED_UID,session_id:res.data.id,text:p.text,done:false,assignee:p.assignee,carried_from:prevId}).select().single();if(r2.data){if(!mActions[res.data.id])mActions[res.data.id]=[];mActions[res.data.id].push(r2.data);}}}
+  activeSession=res.data.id;renderMeetingList();renderMeetingDetail();
+}
+function selectMeeting(id){activeMeeting=id;var ms=sessions[id]||[];activeSession=ms.length?ms[0].id:null;renderMeetingList();renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();}
+function selectSession(sessionId){activeSession=sessionId;renderMeetingDetail();}
+async function addAgendaItem(sessionId){var input=document.getElementById('agendaInput');var text=input.value.trim();if(!text)return;input.value='';setSyncState('syncing');var res=await sb.from('agenda_items').insert({user_id:FIXED_UID,session_id:sessionId,text:text,done:false}).select().single();setSyncState(res.error?'error':'synced');if(res.data){if(!agendaItems[sessionId])agendaItems[sessionId]=[];agendaItems[sessionId].push(res.data);renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();}}
+async function toggleAgendaItem(id,sessionId){var item=(agendaItems[sessionId]||[]).find(function(a){return a.id===id});if(!item)return;item.done=!item.done;renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('agenda_items').update({done:item.done}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function deleteAgendaItem(id,sessionId){agendaItems[sessionId]=(agendaItems[sessionId]||[]).filter(function(a){return a.id!==id});renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('agenda_items').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function addMeetingAction(sessionId){var input=document.getElementById('mActionInput');var assignee=document.getElementById('mActionAssignee').value.trim()||'Me';var text=input.value.trim();if(!text)return;input.value='';setSyncState('syncing');var res=await sb.from('meeting_actions').insert({user_id:FIXED_UID,session_id:sessionId,text:text,done:false,assignee:assignee,carried_from:null}).select().single();setSyncState(res.error?'error':'synced');if(res.data){if(!mActions[sessionId])mActions[sessionId]=[];mActions[sessionId].push(res.data);renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();}}
+async function toggleMeetingAction(id,sessionId){var item=(mActions[sessionId]||[]).find(function(a){return a.id===id});if(!item)return;item.done=!item.done;renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('meeting_actions').update({done:item.done}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function deleteMeetingAction(id,sessionId){mActions[sessionId]=(mActions[sessionId]||[]).filter(function(a){return a.id!==id});renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('meeting_actions').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+
+async function downloadDoc(meetingId,sessionId){
+  var meeting=meetings.find(function(m){return m.id===meetingId});
+  var session=(sessions[meetingId]||[]).find(function(s){return s.id===sessionId});
+  var agenda=agendaItems[sessionId]||[];var acts=mActions[sessionId]||[];
+  var date=new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var D=docx;
+  var carried=acts.filter(function(a){return a.carried_from});var newActs=acts.filter(function(a){return!a.carried_from});
+  var doneActs=acts.filter(function(a){return a.done});var openActs=acts.filter(function(a){return!a.done});
+  function mkBullet(text,strike){return new D.Paragraph({numbering:{reference:'bullets',level:0},children:[new D.TextRun({text:text,strike:!!strike,font:'Arial',size:22})]});}
+  function mkHeading(text){return new D.Paragraph({heading:D.HeadingLevel.HEADING_1,children:[new D.TextRun({text:text,font:'Arial',bold:true})]});}
+  function spacer(){return new D.Paragraph({children:[new D.TextRun('')]});}
+  var children=[new D.Paragraph({children:[new D.TextRun({text:meeting.name,font:'Arial',size:36,bold:true,color:'1a3a5c'})],spacing:{after:80}}),new D.Paragraph({children:[new D.TextRun({text:date,font:'Arial',size:22,color:'7a6f60'})],spacing:{after:240}}),spacer()];
+  if(agenda.length){children.push(mkHeading('Agenda'));agenda.forEach(function(i){children.push(mkBullet(i.text,i.done))});children.push(spacer());}
+  if(carried.length){children.push(mkHeading('Carried Forward from Last Meeting'));carried.forEach(function(a){children.push(mkBullet('['+a.assignee+'] '+a.text,a.done))});children.push(spacer());}
+  if(newActs.length){children.push(mkHeading('Actions'));newActs.forEach(function(a){children.push(mkBullet('['+a.assignee+'] '+a.text,a.done))});children.push(spacer());}
+  children.push(mkHeading('Summary'));children.push(mkBullet('Agenda items discussed: '+agenda.length));children.push(mkBullet('Actions completed: '+doneActs.length));children.push(mkBullet('Actions outstanding: '+openActs.length));
+  var doc=new D.Document({numbering:{config:[{reference:'bullets',levels:[{level:0,format:D.LevelFormat.BULLET,text:'*',alignment:D.AlignmentType.LEFT,style:{paragraph:{indent:{left:720,hanging:360}}}}]}]},styles:{default:{document:{run:{font:'Arial',size:22}}},paragraphStyles:[{id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,run:{size:28,bold:true,font:'Arial',color:'2a2520'},paragraph:{spacing:{before:240,after:120},outlineLevel:0}}]},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1440,right:1440,bottom:1440,left:1440}}},children:children}]});
+  var buffer=await D.Packer.toBlob(doc);var url=URL.createObjectURL(buffer);var a=document.createElement('a');a.href=url;a.download=meeting.name+' - '+session.date+'.docx';a.click();URL.revokeObjectURL(url);
 }
 
-function selectMeeting(id) {
-  activeMeeting = id;
-  var mSessions = sessions[id] || [];
-  activeSession = mSessions.length ? mSessions[0].id : null;
-  renderMeetingList();
-  renderMeetingDetail();
-  document.getElementById('meetingPost').textContent = genMeeting();
-}
-
-function selectSession(sessionId) {
-  activeSession = sessionId;
-  renderMeetingDetail();
-}
-
-async function addAgendaItem(sessionId) {
-  var input = document.getElementById('agendaInput');
-  var text  = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  setSyncState('syncing');
-  var res = await sb.from('agenda_items').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', session_id: sessionId, text: text, done: false }).select().single();
-  setSyncState(res.error?'error':'synced');
-  if (res.data) {
-    if (!agendaItems[sessionId]) agendaItems[sessionId]=[];
-    agendaItems[sessionId].push(res.data);
-    renderMeetingDetail();
-    document.getElementById('meetingPost').textContent = genMeeting();
-  }
-}
-
-async function toggleAgendaItem(id, sessionId) {
-  var item = (agendaItems[sessionId]||[]).find(function(a){ return a.id===id; });
-  if (!item) return;
-  item.done = !item.done; renderMeetingDetail();
-  document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('agenda_items').update({ done: item.done }).eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  setSyncState('synced');
-}
-
-async function deleteAgendaItem(id, sessionId) {
-  agendaItems[sessionId] = (agendaItems[sessionId]||[]).filter(function(a){ return a.id!==id; });
-  renderMeetingDetail();
-  document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('agenda_items').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  setSyncState('synced');
-}
-
-async function addMeetingAction(sessionId) {
-  var input    = document.getElementById('mActionInput');
-  var assignee = document.getElementById('mActionAssignee').value.trim() || 'Me';
-  var text     = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  setSyncState('syncing');
-  var res = await sb.from('meeting_actions').insert({ user_id: '3d7ff7f8-c7c1-420e-ab0a-418862cf779e', session_id: sessionId, text: text, done: false, assignee: assignee, carried_from: null }).select().single();
-  setSyncState(res.error?'error':'synced');
-  if (res.data) {
-    if (!mActions[sessionId]) mActions[sessionId]=[];
-    mActions[sessionId].push(res.data);
-    renderMeetingDetail();
-    document.getElementById('meetingPost').textContent = genMeeting();
-  }
-}
-
-async function toggleMeetingAction(id, sessionId) {
-  var item = (mActions[sessionId]||[]).find(function(a){ return a.id===id; });
-  if (!item) return;
-  item.done = !item.done; renderMeetingDetail();
-  document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('meeting_actions').update({ done: item.done }).eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  setSyncState('synced');
-}
-
-async function deleteMeetingAction(id, sessionId) {
-  mActions[sessionId] = (mActions[sessionId]||[]).filter(function(a){ return a.id!==id; });
-  renderMeetingDetail();
-  document.getElementById('meetingPost').textContent = genMeeting();
-  await sb.from('meeting_actions').delete().eq('id', id).eq('user_id', '3d7ff7f8-c7c1-420e-ab0a-418862cf779e');
-  setSyncState('synced');
-}
-
-// =============================================
-// WORD DOC
-// =============================================
-async function downloadDoc(meetingId, sessionId) {
-  var meeting = meetings.find(function(m){ return m.id===meetingId; });
-  var session = (sessions[meetingId]||[]).find(function(s){ return s.id===sessionId; });
-  var agenda  = agendaItems[sessionId] || [];
-  var acts    = mActions[sessionId] || [];
-  var date    = new Date(session.date).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-  var D = docx;
-  var carried  = acts.filter(function(a){ return a.carried_from; });
-  var newActs  = acts.filter(function(a){ return !a.carried_from; });
-  var doneActs = acts.filter(function(a){ return a.done; });
-  var openActs = acts.filter(function(a){ return !a.done; });
-
-  function mkBullet(text, strike) {
-    return new D.Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [new D.TextRun({ text: text, strike: !!strike, font: 'Arial', size: 22 })] });
-  }
-  function mkHeading(text) {
-    return new D.Paragraph({ heading: D.HeadingLevel.HEADING_1, children: [new D.TextRun({ text: text, font: 'Arial', bold: true })] });
-  }
-  function spacer() { return new D.Paragraph({ children: [new D.TextRun('')] }); }
-
-  var children = [
-    new D.Paragraph({ children: [new D.TextRun({ text: meeting.name, font: 'Arial', size: 36, bold: true, color: '1a3a5c' })], spacing: { after: 80 } }),
-    new D.Paragraph({ children: [new D.TextRun({ text: date, font: 'Arial', size: 22, color: '7a6f60' })], spacing: { after: 240 } }),
-    spacer()
-  ];
-
-  if (agenda.length > 0) {
-    children.push(mkHeading('Agenda'));
-    agenda.forEach(function(item){ children.push(mkBullet(item.text, item.done)); });
-    children.push(spacer());
-  }
-  if (carried.length > 0) {
-    children.push(mkHeading('Carried Forward from Last Meeting'));
-    carried.forEach(function(a){ children.push(mkBullet('[' + a.assignee + '] ' + a.text, a.done)); });
-    children.push(spacer());
-  }
-  if (newActs.length > 0) {
-    children.push(mkHeading('Actions'));
-    newActs.forEach(function(a){ children.push(mkBullet('[' + a.assignee + '] ' + a.text, a.done)); });
-    children.push(spacer());
-  }
-  children.push(mkHeading('Summary'));
-  children.push(mkBullet('Agenda items discussed: ' + agenda.length));
-  children.push(mkBullet('Actions completed: ' + doneActs.length));
-  children.push(mkBullet('Actions outstanding: ' + openActs.length));
-
-  var doc = new D.Document({
-    numbering: { config: [{ reference: 'bullets', levels: [{ level: 0, format: D.LevelFormat.BULLET, text: '*', alignment: D.AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
-    styles: { default: { document: { run: { font: 'Arial', size: 22 } } }, paragraphStyles: [{ id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 28, bold: true, font: 'Arial', color: '2a2520' }, paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 0 } }] },
-    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } }, children: children }]
-  });
-
-  var buffer = await D.Packer.toBlob(doc);
-  var url    = URL.createObjectURL(buffer);
-  var a      = document.createElement('a');
-  a.href = url; a.download = meeting.name + ' - ' + session.date + '.docx';
-  a.click(); URL.revokeObjectURL(url);
-}
-
-// =============================================
-// RENDER
-// =============================================
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function renderTaskList(containerId, bucket) {
-  var el   = document.getElementById(containerId);
-  var list = tasks.filter(function(t){ return t.bucket === bucket; });
-  if (!list.length) { el.innerHTML = '<div class="empty-state">No tasks yet</div>'; return; }
-  el.innerHTML = list.map(function(t) {
-    var moveBtns = '';
-    if (bucket==='today'||bucket==='new') {
-      moveBtns = '<button class="task-btn" onclick="moveTask(\'' + t.id + '\',\'tomorrow\')">tmrw</button>'
-               + '<button class="task-btn" onclick="moveTask(\'' + t.id + '\',\'backlog\')">backlog</button>';
-    } else if (bucket==='tomorrow') {
-      moveBtns = '<button class="task-btn promote" onclick="moveTask(\'' + t.id + '\',\'today\')">today</button>'
-               + '<button class="task-btn" onclick="moveTask(\'' + t.id + '\',\'backlog\')">backlog</button>';
-    } else if (bucket==='backlog') {
-      moveBtns = '<button class="task-btn promote" onclick="moveTask(\'' + t.id + '\',\'today\')">today</button>'
-               + '<button class="task-btn" onclick="moveTask(\'' + t.id + '\',\'tomorrow\')">tmrw</button>';
-    }
-    return '<div class="task-item' + (t.done?' done':'') + (t.confidential?' confidential':'') + '">'
-      + '<div class="task-check' + (t.done?' checked':'') + '" onclick="toggleDone(\'' + t.id + '\')"></div>'
-      + '<span class="task-text">' + esc(t.text) + '</span>'
-      + (t.confidential ? '<span class="task-tag tag-conf">private</span>' : '')
-      + '<div class="task-actions">' + moveBtns
-      + '<button class="task-btn danger" onclick="deleteTask(\'' + t.id + '\')">x</button></div>'
-      + '</div>';
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function renderTaskList(cid,bucket){
+  var el=document.getElementById(cid);var list=tasks.filter(function(t){return t.bucket===bucket});
+  if(!list.length){el.innerHTML='<div class="empty-state">No tasks yet</div>';return;}
+  el.innerHTML=list.map(function(t){
+    var mv='';
+    if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">backlog</button>';}
+    else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">backlog</button>';}
+    else if(bucket==='backlog'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
+    return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+'">'+'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'+'<span class="task-text">'+esc(t.text)+'</span>'+(t.confidential?'<span class="task-tag tag-conf">private</span>':'')+'<div class="task-actions">'+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
   }).join('');
 }
-
-function renderRecurring() {
-  var el = document.getElementById('recurringList');
-  if (!recurring.length) { el.innerHTML = '<div class="empty-state">Your recurring task library is empty</div>'; return; }
-  el.innerHTML = recurring.map(function(r) {
-    return '<div class="recurring-item">'
-      + '<span class="task-text">' + esc(r.text) + '</span>'
-      + '<button class="rec-btn to-today" id="rb-' + r.id + '-today" onclick="copyRecurringTo(\'' + r.id + '\',\'today\')">Today</button>'
-      + '<button class="rec-btn to-tmrw" id="rb-' + r.id + '-tomorrow" onclick="copyRecurringTo(\'' + r.id + '\',\'tomorrow\')">Tomorrow</button>'
-      + '<button class="task-btn danger" style="opacity:0.45;" onclick="deleteRecurring(\'' + r.id + '\')">x</button>'
-      + '</div>';
-  }).join('');
+function renderRecurring(){
+  var el=document.getElementById('recurringList');
+  if(!recurring.length){el.innerHTML='<div class="empty-state">Your recurring task library is empty</div>';return;}
+  el.innerHTML=recurring.map(function(r){return '<div class="recurring-item"><span class="task-text">'+esc(r.text)+'</span><button class="rec-btn to-today" id="rb-'+r.id+'-today" onclick="copyRecurringTo(\''+r.id+'\',\'today\')">Today</button><button class="rec-btn to-tmrw" id="rb-'+r.id+'-tomorrow" onclick="copyRecurringTo(\''+r.id+'\',\'tomorrow\')">Tomorrow</button><button class="task-btn danger" style="opacity:.45" onclick="deleteRecurring(\''+r.id+'\')">x</button></div>';}).join('');
 }
-
-function renderMeetingList() {
-  var el = document.getElementById('meetingTabList');
-  if (!meetings.length) { el.innerHTML = '<div class="empty-state">No meetings yet - click + New meeting above</div>'; return; }
-  el.innerHTML = meetings.map(function(m) {
-    var mSessions = sessions[m.id] || [];
-    var meta = mSessions.length
-      ? mSessions.length + ' session' + (mSessions.length!==1?'s':'') + ' - last ' + new Date(mSessions[0].date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})
-      : (m.cadence || 'No sessions yet');
-    return '<div class="meeting-tab-card' + (activeMeeting===m.id?' active':'') + '" onclick="selectMeeting(\'' + m.id + '\')">'
-      + '<span class="meeting-tab-card-name">' + esc(m.name) + '</span>'
-      + '<span class="meeting-tab-card-meta">' + meta + '</span>'
-      + '</div>';
-  }).join('');
+function renderMeetingList(){
+  var el=document.getElementById('meetingTabList');
+  if(!meetings.length){el.innerHTML='<div class="empty-state">No meetings yet</div>';return;}
+  el.innerHTML=meetings.map(function(m){var ms=sessions[m.id]||[];var meta=ms.length?ms.length+' session'+(ms.length!==1?'s':'')+' - last '+new Date(ms[0].date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):(m.cadence||'No sessions yet');return '<div class="meeting-tab-card'+(activeMeeting===m.id?' active':'')+'" onclick="selectMeeting(\''+m.id+'\')">'+'<span class="meeting-tab-card-name">'+esc(m.name)+'</span>'+'<span class="meeting-tab-card-meta">'+meta+'</span></div>';}).join('');
 }
+function renderMeetingDetail(){
+  var el=document.getElementById('meetingDetail');
+  if(!activeMeeting){el.innerHTML='<div class="no-meeting-selected">Select a meeting above to view agenda and actions</div>';return;}
+  var meeting=meetings.find(function(m){return m.id===activeMeeting});
+  var ms=sessions[activeMeeting]||[];var session=ms.find(function(s){return s.id===activeSession});
+  var agenda=session?(agendaItems[session.id]||[]):[];var acts=session?(mActions[session.id]||[]):[];
+  var carried=acts.filter(function(a){return a.carried_from});var fresh=acts.filter(function(a){return!a.carried_from});
+  var html='<div class="meeting-header-bar"><span class="meeting-header-name">'+esc(meeting.name)+'</span>'+(meeting.cadence?'<span style="font-size:10px;color:var(--text-muted)">'+esc(meeting.cadence)+'</span>':'')+(session?'<span class="session-badge">Session '+(ms.length-ms.findIndex(function(s){return s.id===activeSession}))+'</span>':'')+(ms.length>1?'<select style="font-family:\'DM Mono\',monospace;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:3px;background:white;" onchange="selectSession(this.value)">'+ms.map(function(s,i){return'<option value="'+s.id+'"'+(s.id===activeSession?' selected':'')+'>'+(i===0?'Current: ':'')+new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'</option>';}).join('')+'</select>':'')+'<button class="hdr-btn" onclick="deleteMeeting(\''+activeMeeting+'\')" style="color:var(--red);border-color:var(--red)">Delete</button></div>';
+  if(!session){html+='<div class="panel"><div class="section" style="text-align:center;padding:24px"><p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">No sessions yet.</p><button class="add-btn" onclick="startNewSession(\''+activeMeeting+'\')">Start first session</button></div></div>';}
+  else{
+    var ds=new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    html+='<div class="panel"><div class="panel-header"><span class="panel-title"><span class="dot dot-blue"></span>Agenda</span><span style="font-size:10px;color:var(--text-muted)">'+ds+'</span></div><div class="section"><div class="task-list">'+renderMeetingItems(agenda,'agenda',session.id)+'</div><div class="add-area"><input class="add-input" id="agendaInput" placeholder="Add agenda item..." onkeydown="if(event.key===\'Enter\')addAgendaItem(\''+session.id+'\')"><button class="add-btn" onclick="addAgendaItem(\''+session.id+'\')">+ Add</button></div></div></div>';
+    if(carried.length>0)html+='<div class="panel"><div class="panel-header"><span class="panel-title"><span class="dot dot-amber"></span>Carried from last meeting</span><span style="font-size:10px;color:var(--amber)">'+carried.filter(function(a){return!a.done}).length+' outstanding</span></div><div class="section"><div class="task-list">'+renderMeetingItems(carried,'action',session.id)+'</div><div class="notice n-amber">Tick off as you work through them.</div></div></div>';
+    html+='<div class="panel"><div class="panel-header"><span class="panel-title"><span class="dot dot-accent"></span>Actions from this meeting</span></div><div class="section"><div class="task-list">'+renderMeetingItems(fresh,'action',session.id)+'</div><div class="add-area"><input class="add-input" id="mActionInput" placeholder="Add an action..." style="flex:2" onkeydown="if(event.key===\'Enter\')addMeetingAction(\''+session.id+'\')"><input class="add-input" id="mActionAssignee" placeholder="Me / Name..." style="flex:1;min-width:80px" value="Me"><button class="add-btn" onclick="addMeetingAction(\''+session.id+'\')">+ Add</button></div></div></div>';
+    html+='<div class="panel"><div class="section"><button class="download-btn" onclick="downloadDoc(\''+activeMeeting+'\',\''+session.id+'\')">Download Word doc</button><button class="next-session-btn" onclick="startNewSession(\''+activeMeeting+'\')">Start next session - carry forward incomplete actions</button></div></div>';
+  }
+  el.innerHTML=html;
+}
+function renderMeetingItems(items,type,sessionId){
+  if(!items.length)return'<div class="empty-state">None yet</div>';
+  return items.map(function(item){var ic=type==='action'&&item.carried_from;var tf=type==='agenda'?'toggleAgendaItem':'toggleMeetingAction';var df=type==='agenda'?'deleteAgendaItem':'deleteMeetingAction';return'<div class="task-item'+(item.done?' done':'')+(ic?' carried':'')+'">'+'<div class="task-check'+(item.done?' checked':'')+'" onclick="'+tf+'(\''+item.id+'\',\''+sessionId+'\')"></div>'+'<span class="task-text">'+esc(item.text)+'</span>'+(type==='action'?'<span class="task-tag tag-assignee'+(item.assignee==='Me'?' me':'')+'">'+esc(item.assignee)+'</span>':'')+(ic?'<span class="task-tag tag-carried">carried</span>':'')+'<div class="task-actions"><button class="task-btn danger" onclick="'+df+'(\''+item.id+'\',\''+sessionId+'\')">x</button></div></div>';}).join('');
+}
+function genMorning(){var t=tasks.filter(function(x){return x.bucket==='today'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='* '+x.text+'\n'}):(p+='* (to be added)\n');return p.trim();}
+function genEod(){var done=tasks.filter(function(t){return(t.bucket==='today'||t.bucket==='new')&&t.done&&!t.confidential});var notDone=tasks.filter(function(t){return t.bucket==='today'&&!t.done&&!t.confidential});var added=tasks.filter(function(t){return t.bucket==='new'&&!t.confidential});var p='Today I have:\n\n';if(done.length){p+='Completed:\n';done.forEach(function(t){p+='* '+t.text+' (done)\n'});}if(added.length){p+='\nAdded today:\n';added.forEach(function(t){p+='* '+t.text+(t.done?' (done)':'')+'\n'});}if(notDone.length){p+='\nCarrying forward:\n';notDone.forEach(function(t){p+='* '+t.text+'\n'});}if(!done.length&&!notDone.length&&!added.length)p+='(No tasks recorded today)\n';p+='\nI hope everyone has a lovely evening!';return p.trim();}
+function genTomorrow(){var t=tasks.filter(function(x){return x.bucket==='tomorrow'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='* '+x.text+'\n'}):(p+='* (add tasks in the Tomorrow tab)\n');return p.trim();}
+function genMeeting(){if(!activeMeeting||!activeSession)return'Select a meeting in the Meetings tab to generate a summary';var meeting=meetings.find(function(m){return m.id===activeMeeting});var session=(sessions[activeMeeting]||[]).find(function(s){return s.id===activeSession});if(!meeting||!session)return'No session data found';var agenda=agendaItems[activeSession]||[];var acts=mActions[activeSession]||[];var carried=acts.filter(function(a){return a.carried_from});var fresh=acts.filter(function(a){return!a.carried_from});var date=new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});var p=meeting.name+' - '+date+'\n\n';if(agenda.length){p+='Agenda:\n';agenda.forEach(function(a){p+=(a.done?'(done) ':'')+' * '+a.text+'\n'});p+='\n';}if(carried.length){p+='Carried forward:\n';carried.forEach(function(a){p+=(a.done?'(done) ':'')+'* ['+a.assignee+'] '+a.text+'\n'});p+='\n';}if(fresh.length){p+='Actions:\n';fresh.forEach(function(a){p+=(a.done?'(done) ':'')+'* ['+a.assignee+'] '+a.text+'\n'});}if(!agenda.length&&!acts.length)p+='(No items recorded yet)';return p.trim();}
 
-function renderMeetingDetail() {
-  var el = document.getElementById('meetingDetail');
-  if (!activeMeeting) { el.innerHTML = '<div class="no-meeting-selected">Select a meeting above to view agenda and actions</div>'; return; }
-  var meeting   = meetings.find(function(m){ return m.id===activeMeeting; });
-  var mSessions = sessions[activeMeeting] || [];
-  var session   = mSessions.find(function(s){ return s.id===activeSession; });
-  var agenda    = session ? (agendaItems[session.id]||[]) : [];
-  var acts      = session ? (mActions[session.id]||[]) : [];
-  var carried   = acts.filter(function(a){ return a.carried_from; });
-  var fresh     = acts.filter(function(a){ return !a.carried_from; });
+async function copyPost(which){
+  var text=which==='morning'?genMorning():which==='eod'?genEod():which==='tomorrow'?genTomorrow():genMeeting();
+  var btnId=which==='morning'?'morningCopyBtn':which==='eod'?'eodCopyBtn':which==='tomorrow'?'tomorrowCopyBtn':'meetingCopyBtn';
+  await navigator.clipboard.writeText(text);var btn=document.getElementById(btnId);var orig=btn.textContent;
+  btn.textContent='Copied!';btn.classList.add('copied');setTimeout(function(){btn.textContent=orig;btn.classList.remove('copied');},2000);
+}
+function updateStats(){document.getElementById('statToday').textContent=tasks.filter(function(t){return t.bucket==='today'||t.bucket==='new'}).length;document.getElementById('statDone').textContent=tasks.filter(function(t){return t.done}).length;document.getElementById('statTmrw').textContent=tasks.filter(function(t){return t.bucket==='tomorrow'}).length;document.getElementById('statBacklog').textContent=tasks.filter(function(t){return t.bucket==='backlog'}).length;}
+function render(){renderTaskList('todayList','today');renderTaskList('newList','new');renderTaskList('tomorrowList','tomorrow');renderTaskList('backlogList','backlog');renderRecurring();renderMeetingList();renderMeetingDetail();document.getElementById('morningPost').textContent=genMorning();document.getElementById('eodPost').textContent=genEod();document.getElementById('tomorrowPost').textContent=genTomorrow();document.getElementById('meetingPost').textContent=genMeeting();updateStats();}
 
-  var html = '<div class="meeting-header-bar">'
-    + '<span class="meeting-header-name">' + esc(meeting.name) + '</span>'
-    + (meeting.cadence ? '<span style="font-size:10px;color:var(--text-muted);">' + esc(meeting.cadence) + '</span>' : '')
-    + (session ? '<span class="session-badge">Session ' + (mSessions.length - mSessions.findIndex(function(s){return s.id===activeSession;})) + '</span>' : '')
-    + (mSessions.length > 1 ? '<select style="font-family:\'DM Mono\',monospace;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:3px;background:white;" onchange="selectSession(this.value)">'
-      + mSessions.map(function(s,i){ return '<option value="' + s.id + '"' + (s.id===activeSession?' selected':'') + '>' + (i===0?'Current: ':'') + new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) + '</option>'; }).join('')
-      + '</select>' : '')
-    + '<button class="hdr-btn" onclick="deleteMeeting(\'' + activeMeeting + '\')" style="color:var(--red);border-color:var(--red);">Delete</button>'
-    + '</div>';
-
-  if (!session) {
-    html += '<div class="panel"><div class="section" style="text-align:center;padding:24px;">'
-      + '<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">No sessions yet for this meeting.</p>'
-      + '<button class="add-btn" onclick="startNewSession(\'' + activeMeeting + '\')">Start first session</button>'
-      + '</div></div>';
-  } else {
-    var dateStr = new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-
-    // Agenda panel
-    html += '<div class="panel"><div class="panel-header">'
-      + '<span class="panel-title"><span class="dot dot-blue"></span>Agenda</span>'
-      + '<span style="font-size:10px;color:var(--text-muted);">' + dateStr + '</span>'
-      + '</div><div class="section"><div class="task-list">'
-      + renderMeetingItems(agenda, 'agenda', session.id)
-      + '</div><div class="add-area"><input class="add-input" id="agendaInput" placeholder="Add agenda item..." onkeydown="if(event.key===\'Enter\')addAgendaItem(\'' + session.id + '\')">'
-      + '<button class="add-btn" onclick="addAgendaItem(\'' + session.id + '\')">+ Add</button></div></div></div>';
-
-    // Carried actions
-    if (carried.length > 0) {
-      html += '<div class="panel"><div class="panel-header">'
-        + '<span class="panel-title"><span class="dot dot-amber"></span>Carried from last meeting</span>'
-        + '<span style="font-size:10px;color:var(--amber);">' + carried.filter(function(a){return !a.done;}).length + ' outstanding</span>'
-        + '</div><div class="section"><div class="task-list">' + renderMeetingItems(carried, 'action', session.id)
-        + '</div><div class="notice n-amber">Tick off as you work through them.</div></div></div>';
+async function boot(){
+  try{
+    var res=await sb.auth.getSession();
+    if(res.data&&res.data.session&&res.data.session.user){
+      document.getElementById('loadingOverlay').style.display='none';
+      document.getElementById('appScreen').style.display='block';
+      loadData();return;
     }
-
-    // New actions
-    html += '<div class="panel"><div class="panel-header">'
-      + '<span class="panel-title"><span class="dot dot-accent"></span>Actions from this meeting</span>'
-      + '</div><div class="section"><div class="task-list">' + renderMeetingItems(fresh, 'action', session.id)
-      + '</div><div class="add-area">'
-      + '<input class="add-input" id="mActionInput" placeholder="Add an action..." style="flex:2;" onkeydown="if(event.key===\'Enter\')addMeetingAction(\'' + session.id + '\')">'
-      + '<input class="add-input" id="mActionAssignee" placeholder="Me / Asked..." style="flex:1;min-width:80px;" value="Me">'
-      + '<button class="add-btn" onclick="addMeetingAction(\'' + session.id + '\')">+ Add</button>'
-      + '</div></div></div>';
-
-    // Download + next session
-    html += '<div class="panel"><div class="section">'
-      + '<button class="download-btn" onclick="downloadDoc(\'' + activeMeeting + '\',\'' + session.id + '\')">Download Word doc</button>'
-      + '<button class="next-session-btn" onclick="startNewSession(\'' + activeMeeting + '\')">Start next session - carry forward incomplete actions</button>'
-      + '</div></div>';
-  }
-
-  el.innerHTML = html;
+  }catch(e){console.warn('Session check failed:',e);}
+  document.getElementById('loadingOverlay').style.display='none';
+  var stored=localStorage.getItem(PIN_STORE);
+  if(!stored){document.getElementById('pinSubtitle').textContent='Choose a 4-digit PIN to get started';document.getElementById('pinMsg').textContent="You'll use this on every device.";}
+  document.getElementById('authScreen').style.display='block';
 }
-
-function renderMeetingItems(items, type, sessionId) {
-  if (!items.length) return '<div class="empty-state">None yet</div>';
-  return items.map(function(item) {
-    var isCarried = type==='action' && item.carried_from;
-    var toggleFn = type==='agenda' ? 'toggleAgendaItem' : 'toggleMeetingAction';
-    var deleteFn = type==='agenda' ? 'deleteAgendaItem' : 'deleteMeetingAction';
-    return '<div class="task-item' + (item.done?' done':'') + (isCarried?' carried':'') + '">'
-      + '<div class="task-check' + (item.done?' checked':'') + '" onclick="' + toggleFn + '(\'' + item.id + '\',\'' + sessionId + '\')"></div>'
-      + '<span class="task-text">' + esc(item.text) + '</span>'
-      + (type==='action' ? '<span class="task-tag tag-assignee' + (item.assignee==='Me'?' me':'') + '">' + esc(item.assignee) + '</span>' : '')
-      + (isCarried ? '<span class="task-tag tag-carried">carried</span>' : '')
-      + '<div class="task-actions"><button class="task-btn danger" onclick="' + deleteFn + '(\'' + item.id + '\',\'' + sessionId + '\')">x</button></div>'
-      + '</div>';
-  }).join('');
-}
-
-function genMeeting() {
-  if (!activeMeeting || !activeSession) return 'Select a meeting in the Meetings tab to generate a summary';
-  var meeting = meetings.find(function(m){ return m.id===activeMeeting; });
-  var session = (sessions[activeMeeting]||[]).find(function(s){ return s.id===activeSession; });
-  if (!meeting || !session) return 'No session data found';
-  var agenda  = agendaItems[activeSession] || [];
-  var acts    = mActions[activeSession] || [];
-  var carried = acts.filter(function(a){ return a.carried_from; });
-  var fresh   = acts.filter(function(a){ return !a.carried_from; });
-  var date    = new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-  var p = meeting.name + ' - ' + date + '\n\n';
-  if (agenda.length) {
-    p += 'Agenda:\n';
-    agenda.forEach(function(a){ p += (a.done ? '(done) ' : '') + '* ' + a.text + '\n'; });
-    p += '\n';
-  }
-  if (carried.length) {
-    p += 'Carried forward from last meeting:\n';
-    carried.forEach(function(a){ p += (a.done ? '(done) ' : '') + '* [' + a.assignee + '] ' + a.text + '\n'; });
-    p += '\n';
-  }
-  if (fresh.length) {
-    p += 'Actions:\n';
-    fresh.forEach(function(a){ p += (a.done ? '(done) ' : '') + '* [' + a.assignee + '] ' + a.text + '\n'; });
-  }
-  if (!agenda.length && !acts.length) p += '(No agenda items or actions recorded yet)';
-  return p.trim();
-}
-
-function genMorning() {
-  var t = tasks.filter(function(x){ return x.bucket==='today' && !x.confidential; });
-  var p = 'Good morning, today I will be WFO and;\n\n';
-  t.length ? t.forEach(function(x){ p += '* ' + x.text + '\n'; }) : (p += '* (to be added)\n');
-  return p.trim();
-}
-
-function genEod() {
-  var done    = tasks.filter(function(t){ return (t.bucket==='today'||t.bucket==='new') && t.done && !t.confidential; });
-  var notDone = tasks.filter(function(t){ return t.bucket==='today' && !t.done && !t.confidential; });
-  var added   = tasks.filter(function(t){ return t.bucket==='new' && !t.confidential; });
-  var p = 'Today I have:\n\n';
-  if (done.length)    { p += 'Completed:\n';         done.forEach(function(t){ p += '* ' + t.text + ' (done)\n'; }); }
-  if (added.length)   { p += '\nAdded today:\n';     added.forEach(function(t){ p += '* ' + t.text + (t.done?' (done)':'') + '\n'; }); }
-  if (notDone.length) { p += '\nCarrying forward:\n'; notDone.forEach(function(t){ p += '* ' + t.text + '\n'; }); }
-  if (!done.length && !notDone.length && !added.length) p += '(No tasks recorded today)\n';
-  p += '\nI hope everyone has a lovely evening!';
-  return p.trim();
-}
-
-function genTomorrow() {
-  var t = tasks.filter(function(x){ return x.bucket==='tomorrow' && !x.confidential; });
-  var p = 'Good morning, today I will be WFO and;\n\n';
-  t.length ? t.forEach(function(x){ p += '* ' + x.text + '\n'; }) : (p += '* (add tasks in the Tomorrow tab)\n');
-  return p.trim();
-}
-
-function updateStats() {
-  document.getElementById('statToday').textContent   = tasks.filter(function(t){ return t.bucket==='today'||t.bucket==='new'; }).length;
-  document.getElementById('statDone').textContent    = tasks.filter(function(t){ return t.done; }).length;
-  document.getElementById('statTmrw').textContent    = tasks.filter(function(t){ return t.bucket==='tomorrow'; }).length;
-  document.getElementById('statBacklog').textContent = tasks.filter(function(t){ return t.bucket==='backlog'; }).length;
-}
-
-async function copyPost(which) {
-  var text  = which==='morning'?genMorning():which==='eod'?genEod():which==='tomorrow'?genTomorrow():genMeeting();
-  var btnId = which==='morning'?'morningCopyBtn':which==='eod'?'eodCopyBtn':which==='tomorrow'?'tomorrowCopyBtn':'meetingCopyBtn';
-  await navigator.clipboard.writeText(text);
-  var btn = document.getElementById(btnId);
-  var orig = btn.textContent;
-  btn.textContent = 'Copied!'; btn.classList.add('copied');
-  setTimeout(function(){ btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
-}
-
-function render() {
-  renderTaskList('todayList','today'); renderTaskList('newList','new');
-  renderTaskList('tomorrowList','tomorrow'); renderTaskList('backlogList','backlog');
-  renderRecurring(); renderMeetingList(); renderMeetingDetail();
-  document.getElementById('morningPost').textContent  = genMorning();
-  document.getElementById('eodPost').textContent      = genEod();
-  document.getElementById('tomorrowPost').textContent = genTomorrow();
-  document.getElementById('meetingPost').textContent  = genMeeting();
-  updateStats();
-}
-
-// =============================================
-// BOOT
-// =============================================
-async function boot() {
-  document.getElementById('loadingOverlay').style.display = 'none';
-  // Try to restore existing session first
-  try {
-    var res = await sb.auth.getSession();
-    if (res.data && res.data.session && res.data.session.user) {
-      currentUser = res.data.session.user;
-      document.getElementById('appScreen').style.display = 'block';
-      await loadData();
-      return;
-    }
-  } catch(e) {}
-  // No valid session - show PIN
-  initPinScreen();
-}
-
 boot();
 </script>
 </body>
