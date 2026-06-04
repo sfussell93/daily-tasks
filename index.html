@@ -190,8 +190,8 @@
       <div class="tab-nav">
         <button class="tab-btn tab-today active" onclick="switchTab('today')">Today</button>
         <button class="tab-btn tab-tomorrow"     onclick="switchTab('tomorrow')">Tomorrow</button>
-        <button class="tab-btn tab-recurring"    onclick="switchTab('recurring')">Recurring</button>
-        <button class="tab-btn tab-backlog"      onclick="switchTab('backlog')">Backlog</button>
+        <button class="tab-btn tab-recurring"    onclick="switchTab('recurring')">Ongoing</button>
+        <button class="tab-btn tab-backlog"      onclick="switchTab('backlog')">Other</button>
         <button class="tab-btn tab-meetings"     onclick="switchTab('meetings')">Meetings</button>
       </div>
       <div class="tab-pane active" id="pane-today">
@@ -199,8 +199,8 @@
           <div class="panel-header">
             <span class="panel-title"><span class="dot dot-today"></span>Planned for today</span>
             <div class="header-btns">
-              <button class="hdr-btn" onclick="switchTab('recurring')">+ From recurring</button>
-              <button class="hdr-btn" onclick="pullFromBacklog('today')">+ From backlog</button>
+              <button class="hdr-btn" onclick="switchTab('recurring')">+ From ongoing</button>
+              <button class="hdr-btn" onclick="pullFromBacklog('today')">+ From other</button>
             </div>
           </div>
           <div class="section">
@@ -230,7 +230,7 @@
             <span class="panel-title"><span class="dot dot-tomorrow"></span>Tomorrow's plan (draft)</span>
             <div class="header-btns">
               <button class="hdr-btn" onclick="carryForward()">+ Carry forward unfinished</button>
-              <button class="hdr-btn" onclick="pullFromBacklog('tomorrow')">+ From backlog</button>
+              <button class="hdr-btn" onclick="pullFromBacklog('tomorrow')">+ From other</button>
             </div>
           </div>
           <div class="section">
@@ -246,21 +246,21 @@
       </div>
       <div class="tab-pane" id="pane-recurring">
         <div class="panel">
-          <div class="panel-header"><span class="panel-title"><span class="dot dot-recurring"></span>Regular / recurring tasks</span></div>
+          <div class="panel-header"><span class="panel-title"><span class="dot dot-recurring"></span>Ongoing tasks</span></div>
           <div class="section">
             <div class="task-list" id="recurringList"></div>
             <div class="add-area" style="margin-top:12px">
-              <input class="add-input" id="recurringInput" placeholder="Add a regular task to your library..." onkeydown="if(event.key==='Enter')addRecurring()">
+              <input class="add-input" id="recurringInput" placeholder="Add a task to your ongoing list..." onkeydown="if(event.key==='Enter')addRecurring()">
               <button class="add-btn" onclick="addRecurring()">+ Add</button>
             </div>
-            <div class="notice n-rec">Click Today or Tomorrow to copy a task across. Tasks stay in the library permanently.</div>
+            <div class="notice n-rec">Click Today or Tomorrow to copy a task across. Tasks stay here permanently.</div>
           </div>
         </div>
       </div>
       <div class="tab-pane" id="pane-backlog">
         <div class="panel">
           <div class="panel-header">
-            <span class="panel-title"><span class="dot dot-backlog"></span>Backlog</span>
+            <span class="panel-title"><span class="dot dot-backlog"></span>Other</span>
             <span style="font-size:10px;color:var(--text-muted)">Not today or tomorrow</span>
           </div>
           <div class="section">
@@ -293,7 +293,7 @@
           <div class="stat"><div class="stat-num c-today" id="statToday">0</div><div class="stat-label">Today</div></div>
           <div class="stat"><div class="stat-num c-done"  id="statDone">0</div><div class="stat-label">Done</div></div>
           <div class="stat"><div class="stat-num c-tmrw"  id="statTmrw">0</div><div class="stat-label">Tmrw</div></div>
-          <div class="stat"><div class="stat-num c-backlog" id="statBacklog">0</div><div class="stat-label">Backlog</div></div>
+          <div class="stat"><div class="stat-num c-backlog" id="statBacklog">0</div><div class="stat-label">Other</div></div>
         </div>
       </div>
       <div class="panel">
@@ -500,13 +500,13 @@ async function copyRecurringTo(rid,bucket){
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
   if(btn)setTimeout(function(){btn.textContent=bucket==='today'?'Today':'Tomorrow';btn.disabled=false;},1600);
 }
-async function deleteRecurring(rid){if(!confirm('Remove from library?'))return;recurring=recurring.filter(function(x){return x.id!==rid});render();await dbDeleteRecurring(rid);}
+async function deleteRecurring(rid){if(!confirm('Remove from ongoing list?'))return;recurring=recurring.filter(function(x){return x.id!==rid});render();await dbDeleteRecurring(rid);}
 async function toggleDone(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.done=!t.done;render();await dbUpdateTask(id,{done:t.done});}
 async function moveTask(id,bucket){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.bucket=bucket;t.done=false;render();await dbUpdateTask(id,{bucket:bucket,done:false});}
 async function deleteTask(id){tasks=tasks.filter(function(x){return x.id!==id});render();await dbDeleteTask(id);}
 
 function pullFromBacklog(dest){
-  var bl=tasks.filter(function(t){return t.bucket==='backlog'});if(!bl.length){alert('Backlog is empty!');return;}
+  var bl=tasks.filter(function(t){return t.bucket==='backlog'});if(!bl.length){alert('Other list is empty!');return;}
   var list=bl.map(function(t,i){return(i+1)+'. '+(t.confidential?'[private] ':'')+t.text;}).join('\n');
   var ans=prompt('Pull into '+dest+':\n\n'+list+'\n\nEnter number:');if(!ans)return;
   var idx=parseInt(ans)-1;if(idx>=0&&idx<bl.length)moveTask(bl[idx].id,dest);
@@ -593,15 +593,15 @@ function renderTaskList(cid,bucket){
   if(!list.length){el.innerHTML='<div class="empty-state">No tasks yet</div>';return;}
   el.innerHTML=list.map(function(t){
     var mv='';
-    if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">backlog</button>';}
-    else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">backlog</button>';}
+    if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
+    else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
     else if(bucket==='backlog'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
     return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+'">'+'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'+'<span class="task-text">'+esc(t.text)+'</span>'+(t.confidential?'<span class="task-tag tag-conf">private</span>':'')+'<div class="task-actions">'+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
   }).join('');
 }
 function renderRecurring(){
   var el=document.getElementById('recurringList');
-  if(!recurring.length){el.innerHTML='<div class="empty-state">Your recurring task library is empty</div>';return;}
+  if(!recurring.length){el.innerHTML='<div class="empty-state">Your ongoing list is empty</div>';return;}
   el.innerHTML=recurring.map(function(r){return '<div class="recurring-item"><span class="task-text">'+esc(r.text)+'</span><button class="rec-btn to-today" id="rb-'+r.id+'-today" onclick="copyRecurringTo(\''+r.id+'\',\'today\')">Today</button><button class="rec-btn to-tmrw" id="rb-'+r.id+'-tomorrow" onclick="copyRecurringTo(\''+r.id+'\',\'tomorrow\')">Tomorrow</button><button class="task-btn danger" style="opacity:.45" onclick="deleteRecurring(\''+r.id+'\')">x</button></div>';}).join('');
 }
 function renderMeetingList(){
