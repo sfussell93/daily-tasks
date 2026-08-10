@@ -132,6 +132,8 @@
   .hdr-btn{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:2px;background:white;cursor:pointer;color:var(--text-muted);transition:all .12s;white-space:nowrap}
   .hdr-btn:hover{border-color:var(--text);color:var(--text)}
   .list-type-badge{font-size:9px;color:var(--text-muted);text-transform:none;letter-spacing:0;font-weight:400}
+  .tag-schedule{background:var(--amber-light);color:var(--amber);border:1px solid #f3c98a;cursor:pointer;font-size:9px;padding:2px 6px;border-radius:2px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;font-family:inherit}
+  .tag-schedule:hover{opacity:.75}
   @media(max-width:820px){body{padding:16px}.layout{grid-template-columns:1fr}.right-col{order:-1}}
 </style>
 </head>
@@ -397,7 +399,35 @@ async function loadData(){
     setSyncState('synced');
   }catch(e){setSyncState('error');console.error(e);}
   await migrateLegacyData();
+  await autoAddScheduledTasks();
   render();
+}
+
+// Auto-adds "daily" and "this weekday" ongoing items into Today, once per calendar day.
+function todayDateStr(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+async function autoAddScheduledTasks(){
+  var today=todayDateStr(),dow=new Date().getDay();
+  var due=ongoingItems.filter(function(r){
+    if(!r.schedule||r.last_added_date===today)return false;
+    if(r.schedule==='daily')return true;
+    if(r.schedule.indexOf('weekly:')===0)return parseInt(r.schedule.split(':')[1],10)===dow;
+    return false;
+  });
+  if(!due.length)return;
+  setSyncState('syncing');
+  for(var r of due){
+    var alreadyThere=tasks.some(function(t){return t.bucket==='today'&&t.text===r.text&&!t.done;});
+    if(!alreadyThere){
+      var saved=await dbInsertTask({text:r.text,bucket:'today',done:false,confidential:false});
+      if(saved)tasks.push(saved);
+    }
+    r.last_added_date=today;
+    await sb.from('recurring').update({last_added_date:today}).eq('id',r.id).eq('user_id',FIXED_UID);
+  }
+  setSyncState('synced');
 }
 
 // One-time migration: turns the old fixed "Ongoing" and "Other" tabs into
@@ -534,11 +564,35 @@ async function addListTask(listId){
   var saved=await dbInsertTask({text:text,bucket:listId,done:false,confidential:isConf});
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
 }
+var WEEKDAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function promptForSchedule(defaultChoice){
+  var choice=prompt('When should this repeat?\n\n1 = Every day (auto-added to Today)\n2 = A specific day each week (auto-added to Today)\n3 = Manual only (you click Today/Tomorrow yourself)\n\nEnter 1, 2 or 3:',defaultChoice||'3');
+  if(choice===null)return undefined;
+  if(choice==='1')return 'daily';
+  if(choice==='2'){
+    var d=prompt('Which day of the week?\n\n0 = Sunday\n1 = Monday\n2 = Tuesday\n3 = Wednesday\n4 = Thursday\n5 = Friday\n6 = Saturday\n\nEnter 0-6:','1');
+    if(d===null)return undefined;
+    var dn=parseInt(d,10);
+    if(isNaN(dn)||dn<0||dn>6){alert('Please enter a number 0-6. No repeat set - you can add one later by clicking the badge on the item.');return null;}
+    return 'weekly:'+dn;
+  }
+  return null;
+}
 async function addOngoingItem(listId){
   var input=document.getElementById('ongoingInput-'+listId);var text=input.value.trim();if(!text)return;input.value='';
-  var tmp='tmp_'+Date.now();ongoingItems.push({id:tmp,text:text,list_id:listId});render();
-  setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text,list_id:listId}).select().single();setSyncState(res.error?'error':'synced');
+  var schedule=promptForSchedule('3');
+  if(schedule===undefined)return;
+  var tmp='tmp_'+Date.now();ongoingItems.push({id:tmp,text:text,list_id:listId,schedule:schedule,last_added_date:null});render();
+  setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text,list_id:listId,schedule:schedule,last_added_date:null}).select().single();setSyncState(res.error?'error':'synced');
   if(res.data){ongoingItems=ongoingItems.filter(function(o){return o.id!==tmp});ongoingItems.push(res.data);render();}
+}
+async function editSchedule(id){
+  var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
+  var defaultChoice=r.schedule==='daily'?'1':(r.schedule?'2':'3');
+  var schedule=promptForSchedule(defaultChoice);
+  if(schedule===undefined)return;
+  r.schedule=schedule;r.last_added_date=null;render();
+  setSyncState('syncing');await sb.from('recurring').update({schedule:schedule,last_added_date:null}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
 }
 async function copyOngoingTo(id,bucket){
   var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
@@ -579,13 +633,15 @@ function buildListPaneHtml(list,color){
   if(list.type==='ongoing'){
     var items=ongoingItems.filter(function(o){return o.list_id===list.id});
     body+=items.length?items.map(function(r){
+      var schedLabel=r.schedule==='daily'?'Every day':(r.schedule&&r.schedule.indexOf('weekly:')===0)?WEEKDAY_NAMES[parseInt(r.schedule.split(':')[1],10)].slice(0,3):'Manual';
       return `<div class="recurring-item"><span class="task-text">${esc(r.text)}</span>
+      <button class="tag-schedule" onclick="editSchedule('${r.id}')" title="Click to change how often this repeats">${schedLabel}</button>
       <button class="rec-btn to-today" id="rb-${r.id}-today" onclick="copyOngoingTo('${r.id}','today')">Today</button>
       <button class="rec-btn to-tmrw" id="rb-${r.id}-tomorrow" onclick="copyOngoingTo('${r.id}','tomorrow')">Tomorrow</button>
       <button class="task-btn danger" style="opacity:.45" onclick="deleteOngoingItem('${r.id}')">x</button></div>`;
     }).join(''):'<div class="empty-state">Nothing here yet</div>';
     body+=`<div class="add-area" style="margin-top:12px"><input class="add-input" id="ongoingInput-${list.id}" placeholder="Add an item to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addOngoingItem('${list.id}')"><button class="add-btn" onclick="addOngoingItem('${list.id}')">+ Add</button></div>`;
-    body+=`<div class="notice n-rec">Click Today or Tomorrow to copy an item across. Items stay here permanently.</div>`;
+    body+=`<div class="notice n-rec">Set "Every day" or a weekday and it'll auto-add itself to Today. Otherwise click Today or Tomorrow to copy it across yourself. Click the badge on any item to change its repeat.</div>`;
   }else{
     var titems=tasks.filter(function(t){return t.bucket===list.id});
     body+=titems.length?titems.map(function(t){
