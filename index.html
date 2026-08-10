@@ -414,6 +414,13 @@ async function autoAddScheduledTasks(){
     if(!r.schedule||r.last_added_date===today)return false;
     if(r.schedule==='daily')return true;
     if(r.schedule.indexOf('weekly:')===0)return parseInt(r.schedule.split(':')[1],10)===dow;
+    if(r.schedule.indexOf('biweekly:')===0){
+      var p=r.schedule.split(':'),schedDow=parseInt(p[1],10),anchor=p[2];
+      if(schedDow!==dow)return false;
+      var anchorDate=new Date(anchor+'T00:00:00'),todayDate=new Date(today+'T00:00:00');
+      var diffDays=Math.round((todayDate-anchorDate)/86400000);
+      return diffDays>=0&&diffDays%14===0;
+    }
     return false;
   });
   if(!due.length)return;
@@ -566,7 +573,7 @@ async function addListTask(listId){
 }
 var WEEKDAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function promptForSchedule(defaultChoice){
-  var choice=prompt('When should this repeat?\n\n1 = Every day (auto-added to Today)\n2 = A specific day each week (auto-added to Today)\n3 = Manual only (you click Today/Tomorrow yourself)\n\nEnter 1, 2 or 3:',defaultChoice||'3');
+  var choice=prompt('When should this repeat?\n\n1 = Every day (auto-added to Today)\n2 = A specific day each week (auto-added to Today)\n3 = Manual only (you click Today/Tomorrow yourself)\n4 = Every other week (auto-added to Today)\n\nEnter 1, 2, 3 or 4:',defaultChoice||'3');
   if(choice===null)return undefined;
   if(choice==='1')return 'daily';
   if(choice==='2'){
@@ -575,6 +582,17 @@ function promptForSchedule(defaultChoice){
     var dn=parseInt(d,10);
     if(isNaN(dn)||dn<0||dn>6){alert('Please enter a number 0-6. No repeat set - you can add one later by clicking the badge on the item.');return null;}
     return 'weekly:'+dn;
+  }
+  if(choice==='4'){
+    var d2=prompt('Which day of the week does it fall on?\n\n0 = Sunday\n1 = Monday\n2 = Tuesday\n3 = Wednesday\n4 = Thursday\n5 = Friday\n6 = Saturday\n\nEnter 0-6:','1');
+    if(d2===null)return undefined;
+    var dn2=parseInt(d2,10);
+    if(isNaN(dn2)||dn2<0||dn2>6){alert('Please enter a number 0-6. No repeat set - you can add one later by clicking the badge on the item.');return null;}
+    var anchor=prompt('Enter any ONE date this meeting falls on (a date it actually happens), as YYYY-MM-DD - e.g. the next occurrence:');
+    if(anchor===null)return undefined;
+    anchor=anchor.trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(anchor)){alert('Please use the format YYYY-MM-DD, e.g. 2026-08-17. No repeat set - you can add one later by clicking the badge on the item.');return null;}
+    return 'biweekly:'+dn2+':'+anchor;
   }
   return null;
 }
@@ -588,7 +606,7 @@ async function addOngoingItem(listId){
 }
 async function editSchedule(id){
   var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
-  var defaultChoice=r.schedule==='daily'?'1':(r.schedule?'2':'3');
+  var defaultChoice=r.schedule==='daily'?'1':(r.schedule&&r.schedule.indexOf('biweekly:')===0)?'4':(r.schedule?'2':'3');
   var schedule=promptForSchedule(defaultChoice);
   if(schedule===undefined)return;
   r.schedule=schedule;r.last_added_date=null;render();
@@ -633,7 +651,10 @@ function buildListPaneHtml(list,color){
   if(list.type==='ongoing'){
     var items=ongoingItems.filter(function(o){return o.list_id===list.id});
     body+=items.length?items.map(function(r){
-      var schedLabel=r.schedule==='daily'?'Every day':(r.schedule&&r.schedule.indexOf('weekly:')===0)?WEEKDAY_NAMES[parseInt(r.schedule.split(':')[1],10)].slice(0,3):'Manual';
+      var schedLabel='Manual';
+      if(r.schedule==='daily')schedLabel='Every day';
+      else if(r.schedule&&r.schedule.indexOf('weekly:')===0)schedLabel=WEEKDAY_NAMES[parseInt(r.schedule.split(':')[1],10)].slice(0,3);
+      else if(r.schedule&&r.schedule.indexOf('biweekly:')===0){var bp=r.schedule.split(':');schedLabel=WEEKDAY_NAMES[parseInt(bp[1],10)].slice(0,3)+' (2wk)';}
       return `<div class="recurring-item"><span class="task-text">${esc(r.text)}</span>
       <button class="tag-schedule" onclick="editSchedule('${r.id}')" title="Click to change how often this repeats">${schedLabel}</button>
       <button class="rec-btn to-today" id="rb-${r.id}-today" onclick="copyOngoingTo('${r.id}','today')">Today</button>
@@ -641,7 +662,7 @@ function buildListPaneHtml(list,color){
       <button class="task-btn danger" style="opacity:.45" onclick="deleteOngoingItem('${r.id}')">x</button></div>`;
     }).join(''):'<div class="empty-state">Nothing here yet</div>';
     body+=`<div class="add-area" style="margin-top:12px"><input class="add-input" id="ongoingInput-${list.id}" placeholder="Add an item to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addOngoingItem('${list.id}')"><button class="add-btn" onclick="addOngoingItem('${list.id}')">+ Add</button></div>`;
-    body+=`<div class="notice n-rec">Set "Every day" or a weekday and it'll auto-add itself to Today. Otherwise click Today or Tomorrow to copy it across yourself. Click the badge on any item to change its repeat.</div>`;
+    body+=`<div class="notice n-rec">Set "Every day", a weekday, or "every other week" and it'll auto-add itself to Today. Otherwise click Today or Tomorrow to copy it across yourself. Click the badge on any item to change its repeat.</div>`;
   }else{
     var titems=tasks.filter(function(t){return t.bucket===list.id});
     body+=titems.length?titems.map(function(t){
