@@ -487,6 +487,17 @@ async function addTask(bucket){
 async function toggleDone(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.done=!t.done;render();await dbUpdateTask(id,{done:t.done});}
 async function moveTask(id,bucket){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.bucket=bucket;t.done=false;render();await dbUpdateTask(id,{bucket:bucket,done:false});}
 async function deleteTask(id){tasks=tasks.filter(function(x){return x.id!==id});render();await dbDeleteTask(id);}
+async function editTaskText(id){
+  var t=tasks.find(function(x){return x.id===id});if(!t)return;
+  var text=prompt('Edit task:',t.text);if(text===null)return;text=text.trim();if(!text)return;
+  t.text=text;render();await dbUpdateTask(id,{text:text});
+}
+async function editOngoingText(id){
+  var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
+  var text=prompt('Edit item:',r.text);if(text===null)return;text=text.trim();if(!text)return;
+  r.text=text;render();
+  setSyncState('syncing');await sb.from('recurring').update({text:text}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
 
 async function pullFromAnyList(dest){
   var entries=[];
@@ -634,7 +645,7 @@ function renderTaskList(cid,bucket){
     var mv='';
     if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
     else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button>';}
-    return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+'">'+'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'+'<span class="task-text">'+esc(t.text)+'</span>'+(t.confidential?'<span class="task-tag tag-conf">private</span>':'')+'<div class="task-actions">'+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
+    return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+'">'+'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'+'<span class="task-text">'+esc(t.text)+'</span>'+(t.confidential?'<span class="task-tag tag-conf">private</span>':'')+'<div class="task-actions">'+mv+'<button class="task-btn" onclick="editTaskText(\''+t.id+'\')">edit</button><button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
   }).join('');
 }
 
@@ -659,6 +670,7 @@ function buildListPaneHtml(list,color){
       <button class="tag-schedule" onclick="editSchedule('${r.id}')" title="Click to change how often this repeats">${schedLabel}</button>
       <button class="rec-btn to-today" id="rb-${r.id}-today" onclick="copyOngoingTo('${r.id}','today')">Today</button>
       <button class="rec-btn to-tmrw" id="rb-${r.id}-tomorrow" onclick="copyOngoingTo('${r.id}','tomorrow')">Tomorrow</button>
+      <button class="task-btn" onclick="editOngoingText('${r.id}')">edit</button>
       <button class="task-btn danger" style="opacity:.45" onclick="deleteOngoingItem('${r.id}')">x</button></div>`;
     }).join(''):'<div class="empty-state">Nothing here yet</div>';
     body+=`<div class="add-area" style="margin-top:12px"><input class="add-input" id="ongoingInput-${list.id}" placeholder="Add an item to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addOngoingItem('${list.id}')"><button class="add-btn" onclick="addOngoingItem('${list.id}')">+ Add</button></div>`;
@@ -669,7 +681,7 @@ function buildListPaneHtml(list,color){
       return `<div class="task-item${t.done?' done':''}${t.confidential?' confidential':''}">
       <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')"></div>
       <span class="task-text">${esc(t.text)}</span>${t.confidential?'<span class="task-tag tag-conf">private</span>':''}
-      <div class="task-actions"><button class="task-btn" onclick="moveTask('${t.id}','today')">today</button><button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">tmrw</button><button class="task-btn danger" onclick="deleteTask('${t.id}')">x</button></div></div>`;
+      <div class="task-actions"><button class="task-btn" onclick="moveTask('${t.id}','today')">today</button><button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">tmrw</button><button class="task-btn" onclick="editTaskText('${t.id}')">edit</button><button class="task-btn danger" onclick="deleteTask('${t.id}')">x</button></div></div>`;
     }).join(''):'<div class="empty-state">No tasks yet</div>';
     body+=`<div class="add-area"><input class="add-input" id="listInput-${list.id}" placeholder="Add a task to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addListTask('${list.id}')"><label class="conf-label"><input type="checkbox" id="listConf-${list.id}"> &#128274;</label><button class="add-btn" onclick="addListTask('${list.id}')">+ Add</button></div>`;
     body+=`<div class="notice n-conf">Tasks marked private never appear in any Teams post.</div>`;
