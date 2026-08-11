@@ -433,7 +433,7 @@ async function autoAddScheduledTasks(){
   for(var r of due){
     var alreadyThere=tasks.some(function(t){return t.bucket==='today'&&t.text===r.text&&!t.done;});
     if(!alreadyThere){
-      var saved=await dbInsertTask({text:r.text,bucket:'today',done:false,confidential:false});
+      var saved=await dbInsertTask({text:r.text,bucket:'today',done:false,confidential:false,type:r.type||null});
       if(saved)tasks.push(saved);
     }
     r.last_added_date=today;
@@ -490,10 +490,11 @@ async function addTask(bucket){
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
 }
 var TYPE_META={meeting:{label:'Meeting',color:'#4338ca'},quick:{label:'Quick',color:'#0f9d58'},long:{label:'Long',color:'#c2410c'}};
-function taskTypeButtonHtml(t){
-  if(!t.type)return `<button class="type-btn" onclick="editTaskType('${t.id}')" title="Set task type">+ type</button>`;
-  var m=TYPE_META[t.type];if(!m)return `<button class="type-btn" onclick="editTaskType('${t.id}')" title="Set task type">+ type</button>`;
-  return `<button class="type-btn" style="background:${m.color}18;color:${m.color};border-color:${m.color}66" onclick="editTaskType('${t.id}')" title="Click to change task type">${m.label}</button>`;
+function taskTypeButtonHtml(t,isOngoing){
+  var handler=isOngoing?'editOngoingType':'editTaskType';
+  if(!t.type)return `<button class="type-btn" onclick="${handler}('${t.id}')" title="Set task type">+ type</button>`;
+  var m=TYPE_META[t.type];if(!m)return `<button class="type-btn" onclick="${handler}('${t.id}')" title="Set task type">+ type</button>`;
+  return `<button class="type-btn" style="background:${m.color}18;color:${m.color};border-color:${m.color}66" onclick="${handler}('${t.id}')" title="Click to change task type">${m.label}</button>`;
 }
 function promptForTaskType(defaultChoice){
   var choice=prompt('What kind of task is this?\n\n1 = Meeting\n2 = Quick task (a few minutes)\n3 = Long task (needs a proper block of time)\n\nLeave blank for no type.\n\nEnter 1, 2 or 3:',defaultChoice||'');
@@ -641,9 +642,18 @@ async function addOngoingItem(listId){
   var input=document.getElementById('ongoingInput-'+listId);var text=input.value.trim();if(!text)return;input.value='';
   var schedule=promptForSchedule('3');
   if(schedule===undefined)return;
-  var tmp='tmp_'+Date.now();ongoingItems.push({id:tmp,text:text,list_id:listId,schedule:schedule,last_added_date:null});render();
-  setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text,list_id:listId,schedule:schedule,last_added_date:null}).select().single();setSyncState(res.error?'error':'synced');
+  var type=promptForTaskType();if(type===undefined)type=null;
+  var tmp='tmp_'+Date.now();ongoingItems.push({id:tmp,text:text,list_id:listId,schedule:schedule,last_added_date:null,type:type});render();
+  setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text,list_id:listId,schedule:schedule,last_added_date:null,type:type}).select().single();setSyncState(res.error?'error':'synced');
   if(res.data){ongoingItems=ongoingItems.filter(function(o){return o.id!==tmp});ongoingItems.push(res.data);render();}
+}
+async function editOngoingType(id){
+  var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
+  var defaultChoice=r.type==='meeting'?'1':r.type==='quick'?'2':r.type==='long'?'3':'';
+  var type=promptForTaskType(defaultChoice);
+  if(type===undefined)return;
+  r.type=type;render();
+  setSyncState('syncing');await sb.from('recurring').update({type:type}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
 }
 async function editSchedule(id){
   var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
@@ -656,8 +666,8 @@ async function editSchedule(id){
 async function copyOngoingTo(id,bucket){
   var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
   var btn=document.getElementById('rb-'+id+'-'+bucket);if(btn){btn.textContent='Done';btn.disabled=true;}
-  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:r.text,bucket:bucket,done:false,confidential:false});render();
-  var saved=await dbInsertTask({text:r.text,bucket:bucket,done:false,confidential:false});
+  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:r.text,bucket:bucket,done:false,confidential:false,type:r.type||null});render();
+  var saved=await dbInsertTask({text:r.text,bucket:bucket,done:false,confidential:false,type:r.type||null});
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
   if(btn)setTimeout(function(){btn.textContent=bucket==='today'?'Today':'Tomorrow';btn.disabled=false;},1600);
 }
@@ -671,12 +681,19 @@ function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace
 function renderTaskList(cid,bucket){
   var el=document.getElementById(cid);var list=tasks.filter(function(t){return t.bucket===bucket});
   if(!list.length){el.innerHTML='<div class="empty-state">No tasks yet</div>';return;}
-  el.innerHTML=list.map(function(t){
-    var mv='';
-    if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
-    else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button>';}
-    return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+'">'+'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'+'<span class="task-text">'+esc(t.text)+'</span>'+(t.confidential?'<span class="task-tag tag-conf">private</span>':'')+taskTypeButtonHtml(t)+'<div class="task-actions">'+mv+'<button class="task-btn" onclick="editTaskText(\''+t.id+'\')">edit</button><button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
+  var groupDefs=[['meeting','Meetings'],['quick','Quick tasks'],['long','Long tasks'],[null,'Untyped']];
+  var html=groupDefs.map(function(g){
+    var items=list.filter(function(t){return g[0]===null?!t.type:t.type===g[0];});
+    if(!items.length)return '';
+    var rows=items.map(function(t){
+      var mv='';
+      if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
+      else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button>';}
+      return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+'">'+'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'+'<span class="task-text">'+esc(t.text)+'</span>'+(t.confidential?'<span class="task-tag tag-conf">private</span>':'')+taskTypeButtonHtml(t)+'<div class="task-actions">'+mv+'<button class="task-btn" onclick="editTaskText(\''+t.id+'\')">edit</button><button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
+    }).join('');
+    return '<div class="type-group"><div class="type-group-label">'+g[1]+' ('+items.length+')</div><div class="task-list">'+rows+'</div></div>';
   }).join('');
+  el.innerHTML=html||'<div class="empty-state">No tasks yet</div>';
 }
 
 function renderListTabs(){
@@ -691,20 +708,28 @@ function buildListPaneHtml(list,color){
   var body='';
   if(list.type==='ongoing'){
     var items=ongoingItems.filter(function(o){return o.list_id===list.id});
-    body+=items.length?items.map(function(r){
-      var schedLabel='Manual';
-      if(r.schedule==='daily')schedLabel='Every day';
-      else if(r.schedule&&r.schedule.indexOf('weekly:')===0)schedLabel=WEEKDAY_NAMES[parseInt(r.schedule.split(':')[1],10)].slice(0,3);
-      else if(r.schedule&&r.schedule.indexOf('biweekly:')===0){var bp=r.schedule.split(':');schedLabel=WEEKDAY_NAMES[parseInt(bp[1],10)].slice(0,3)+' (2wk)';}
-      return `<div class="recurring-item"><span class="task-text">${esc(r.text)}</span>
-      <button class="tag-schedule" onclick="editSchedule('${r.id}')" title="Click to change how often this repeats">${schedLabel}</button>
-      <button class="rec-btn to-today" id="rb-${r.id}-today" onclick="copyOngoingTo('${r.id}','today')">Today</button>
-      <button class="rec-btn to-tmrw" id="rb-${r.id}-tomorrow" onclick="copyOngoingTo('${r.id}','tomorrow')">Tomorrow</button>
-      <button class="task-btn" onclick="editOngoingText('${r.id}')">edit</button>
-      <button class="task-btn danger" style="opacity:.45" onclick="deleteOngoingItem('${r.id}')">x</button></div>`;
-    }).join(''):'<div class="empty-state">Nothing here yet</div>';
+    var oGroupDefs=[['meeting','Meetings'],['quick','Quick tasks'],['long','Long tasks'],[null,'Untyped']];
+    var oGroupsHtml=oGroupDefs.map(function(g){
+      var gItems=items.filter(function(o){return g[0]===null?!o.type:o.type===g[0];});
+      if(!gItems.length)return '';
+      var rows=gItems.map(function(r){
+        var schedLabel='Manual';
+        if(r.schedule==='daily')schedLabel='Every day';
+        else if(r.schedule&&r.schedule.indexOf('weekly:')===0)schedLabel=WEEKDAY_NAMES[parseInt(r.schedule.split(':')[1],10)].slice(0,3);
+        else if(r.schedule&&r.schedule.indexOf('biweekly:')===0){var bp=r.schedule.split(':');schedLabel=WEEKDAY_NAMES[parseInt(bp[1],10)].slice(0,3)+' (2wk)';}
+        return `<div class="recurring-item"><span class="task-text">${esc(r.text)}</span>
+        ${taskTypeButtonHtml({id:r.id,type:r.type},true)}
+        <button class="tag-schedule" onclick="editSchedule('${r.id}')" title="Click to change how often this repeats">${schedLabel}</button>
+        <button class="rec-btn to-today" id="rb-${r.id}-today" onclick="copyOngoingTo('${r.id}','today')">Today</button>
+        <button class="rec-btn to-tmrw" id="rb-${r.id}-tomorrow" onclick="copyOngoingTo('${r.id}','tomorrow')">Tomorrow</button>
+        <button class="task-btn" onclick="editOngoingText('${r.id}')">edit</button>
+        <button class="task-btn danger" style="opacity:.45" onclick="deleteOngoingItem('${r.id}')">x</button></div>`;
+      }).join('');
+      return `<div class="type-group"><div class="type-group-label">${g[1]} (${gItems.length})</div><div class="task-list">${rows}</div></div>`;
+    }).join('');
+    body+=oGroupsHtml||'<div class="empty-state">Nothing here yet</div>';
     body+=`<div class="add-area" style="margin-top:12px"><input class="add-input" id="ongoingInput-${list.id}" placeholder="Add an item to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addOngoingItem('${list.id}')"><button class="add-btn" onclick="addOngoingItem('${list.id}')">+ Add</button></div>`;
-    body+=`<div class="notice n-rec">Set "Every day", a weekday, or "every other week" and it'll auto-add itself to Today. Otherwise click Today or Tomorrow to copy it across yourself. Click the badge on any item to change its repeat.</div>`;
+    body+=`<div class="notice n-rec">Set "Every day", a weekday, or "every other week" and it'll auto-add itself to Today, keeping its Meeting/Quick/Long tag. Otherwise click Today or Tomorrow to copy it across yourself. Click either badge on an item to change it.</div>`;
   }else{
     var titems=tasks.filter(function(t){return t.bucket===list.id});
     var groupDefs=[['meeting','Meetings'],['quick','Quick tasks'],['long','Long tasks'],[null,'Untyped']];
