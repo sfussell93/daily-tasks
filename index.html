@@ -136,6 +136,9 @@
   .tag-schedule:hover{opacity:.75}
   .type-btn{font-size:9px;padding:2px 6px;border-radius:2px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:white;color:var(--text-muted);flex-shrink:0;margin-top:2px}
   .type-btn:hover{opacity:.75}
+  .date-btn{font-size:9px;padding:2px 6px;border-radius:2px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:white;color:var(--text-muted);flex-shrink:0;margin-top:2px}
+  .date-btn:hover{opacity:.75}
+  .date-btn.set{background:var(--blue-light);color:var(--blue);border-color:#b8cce0}
   .type-group-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin:14px 0 6px;padding-top:10px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:6px}
   .type-group:first-child .type-group-label{border-top:none;padding-top:0;margin-top:0}
   .type-group .task-list{margin-bottom:0}
@@ -405,6 +408,7 @@ async function loadData(){
   }catch(e){setSyncState('error');console.error(e);}
   await migrateLegacyData();
   await autoAddScheduledTasks();
+  await autoPullDueDateTasks();
   render();
 }
 
@@ -513,6 +517,37 @@ async function editTaskType(id){
   var type=promptForTaskType(defaultChoice);
   if(type===undefined)return;
   t.type=type;render();await dbUpdateTask(id,{type:type});
+}
+
+function formatShortDate(iso){var d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+function dueDateButtonHtml(t){
+  if(!t.due_date)return `<button class="date-btn" onclick="editTaskDueDate('${t.id}')" title="Auto-pull this into Today/Tomorrow on a date">+ date</button>`;
+  return `<button class="date-btn set" onclick="editTaskDueDate('${t.id}')" title="Click to change or clear">${formatShortDate(t.due_date)}</button>`;
+}
+async function editTaskDueDate(id){
+  var t=tasks.find(function(x){return x.id===id});if(!t)return;
+  var val=prompt('Pull "'+t.text+'" into Tomorrow the day before, then Today on the day itself.\n\nEnter the date as YYYY-MM-DD (leave blank to clear):',t.due_date||'');
+  if(val===null)return;
+  val=val.trim();
+  if(val===''){t.due_date=null;render();await dbUpdateTask(id,{due_date:null});return;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(val)){alert('Please use the format YYYY-MM-DD, e.g. 2026-08-20. Date not changed.');return;}
+  t.due_date=val;render();await dbUpdateTask(id,{due_date:val});
+}
+async function autoPullDueDateTasks(){
+  var today=todayDateStr();
+  var tmrwD=new Date();tmrwD.setDate(tmrwD.getDate()+1);
+  var tomorrowStr=tmrwD.getFullYear()+'-'+String(tmrwD.getMonth()+1).padStart(2,'0')+'-'+String(tmrwD.getDate()).padStart(2,'0');
+  var checklistIds=lists.filter(function(l){return l.type==='checklist';}).map(function(l){return l.id;});
+  var toMove=tasks.filter(function(t){
+    if(!t.due_date||checklistIds.indexOf(t.bucket)===-1)return false;
+    return t.due_date<=today||t.due_date===tomorrowStr;
+  });
+  if(!toMove.length)return;
+  for(var t of toMove){
+    var dest=t.due_date<=today?'today':'tomorrow';
+    t.bucket=dest;t.done=false;t.due_date=null;
+    await dbUpdateTask(t.id,{bucket:dest,done:false,due_date:null});
+  }
 }
 
 async function toggleDone(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.done=!t.done;render();await dbUpdateTask(id,{done:t.done});}
@@ -740,14 +775,14 @@ function buildListPaneHtml(list,color){
       var rows=items.map(function(t){
         return `<div class="task-item${t.done?' done':''}${t.confidential?' confidential':''}">
         <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')"></div>
-        <span class="task-text">${esc(t.text)}</span>${t.confidential?'<span class="task-tag tag-conf">private</span>':''}${taskTypeButtonHtml(t)}
+        <span class="task-text">${esc(t.text)}</span>${t.confidential?'<span class="task-tag tag-conf">private</span>':''}${taskTypeButtonHtml(t)}${dueDateButtonHtml(t)}
         <div class="task-actions"><button class="task-btn" onclick="moveTask('${t.id}','today')">today</button><button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">tmrw</button><button class="task-btn" onclick="editTaskText('${t.id}')">edit</button><button class="task-btn danger" onclick="deleteTask('${t.id}')">x</button></div></div>`;
       }).join('');
       return `<div class="type-group"><div class="type-group-label">${g[1]} (${items.length})</div><div class="task-list">${rows}</div></div>`;
     }).join('');
     body+=groupsHtml||'<div class="empty-state">No tasks yet</div>';
     body+=`<div class="add-area"><input class="add-input" id="listInput-${list.id}" placeholder="Add a task to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addListTask('${list.id}')"><label class="conf-label"><input type="checkbox" id="listConf-${list.id}"> &#128274;</label><button class="add-btn" onclick="addListTask('${list.id}')">+ Add</button></div>`;
-    body+=`<div class="notice n-conf">Tasks marked private never appear in any Teams post. You'll be asked Meeting / Quick / Long / Email when adding - click a task's type badge to change it later.</div>`;
+    body+=`<div class="notice n-conf">Tasks marked private never appear in any Teams post. You'll be asked Meeting / Quick / Long / Email when adding - click a task's type badge to change it, or click "+ date" to have it auto-pull into Tomorrow, then Today, on a specific date.</div>`;
   }
   return `<div class="tab-pane${active?' active':''}" id="pane-list-${list.id}">
     <div class="panel"><div class="panel-header">
