@@ -80,6 +80,12 @@
   .task-item.mustdo{background:#fff0f0;border-color:#e88888;border-width:1.5px}
   .task-item.mustdo .task-text{font-weight:700;color:var(--red)}
   .tag-mustdo{background:#fff0f0;color:var(--red);border:1px solid #e88888}
+  .tag-type-meeting{background:#e8eef8;color:#1a3a5c;border:1px solid #b8cce0}
+  .tag-type-quick{background:#e8f5ec;color:#1a5c2a;border:1px solid #b8d4be}
+  .tag-type-long{background:#fdf5e8;color:#5c3a00;border:1px solid #d4b870}
+  .tag-type-email{background:#f3eaf8;color:#4a1a6b;border:1px solid #c9a8e0}
+  .type-select{font-family:'DM Mono',monospace;font-size:11px;padding:6px 7px;border:1.5px solid var(--border);border-radius:3px;background:white;color:var(--text);outline:none;cursor:pointer;flex-shrink:0}
+  .type-select:focus{border-color:var(--text)}
   .task-check{width:16px;height:16px;border:1.5px solid var(--border);border-radius:2px;cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;background:white}
   .task-check:hover{border-color:var(--accent)}
   .task-check.checked{background:var(--accent);border-color:var(--accent)}
@@ -221,6 +227,13 @@
             <div class="task-list" id="todayList"></div>
             <div class="add-area">
               <input class="add-input" id="todayInput" placeholder="Add a task for today..." onkeydown="if(event.key==='Enter')addTask('today')">
+              <select class="type-select" id="todayType">
+                <option value="">Type...</option>
+                <option value="meeting">Meeting</option>
+                <option value="quick">Quick Task</option>
+                <option value="long">Long Task</option>
+                <option value="email">Email</option>
+              </select>
               <label class="conf-label" title="Must do today"><input type="checkbox" id="todayMust"> &#x1F534;</label>
               <label class="conf-label"><input type="checkbox" id="todayConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('today')">+ Add</button>
@@ -252,6 +265,13 @@
             <div class="task-list" id="tomorrowList"></div>
             <div class="add-area">
               <input class="add-input" id="tomorrowInput" placeholder="Plan a task for tomorrow..." onkeydown="if(event.key==='Enter')addTask('tomorrow')">
+              <select class="type-select" id="tomorrowType">
+                <option value="">Type...</option>
+                <option value="meeting">Meeting</option>
+                <option value="quick">Quick Task</option>
+                <option value="long">Long Task</option>
+                <option value="email">Email</option>
+              </select>
               <label class="conf-label" title="Must do tomorrow"><input type="checkbox" id="tomorrowMust"> &#x1F534;</label>
               <label class="conf-label"><input type="checkbox" id="tomorrowConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('tomorrow')">+ Add</button>
@@ -498,7 +518,7 @@ async function loadData(){
   render();
 }
 
-async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false,task_type:t.task_type||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbUpdateTask(id,c){setSyncState('syncing');await sb.from('tasks').update(c).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbDeleteTask(id){setSyncState('syncing');await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbInsertRecurring(text){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
@@ -554,11 +574,13 @@ function switchTab(tab){
 async function addTask(bucket){
   var input=document.getElementById(bucket+'Input'),confEl=document.getElementById(bucket+'Conf');
   var mustEl=document.getElementById(bucket+'Must');
+  var typeEl=document.getElementById(bucket+'Type');
   var text=input.value.trim();if(!text)return;
   input.value='';var isConf=confEl?confEl.checked:false;if(confEl)confEl.checked=false;
   var isMust=mustEl?mustEl.checked:false;if(mustEl)mustEl.checked=false;
-  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:text,bucket:bucket,done:false,confidential:isConf,must_do:isMust});render();
-  var saved=await dbInsertTask({text:text,bucket:bucket,done:false,confidential:isConf,must_do:isMust});
+  var taskType=typeEl?typeEl.value||null:null;if(typeEl)typeEl.value='';
+  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:text,bucket:bucket,done:false,confidential:isConf,must_do:isMust,task_type:taskType});render();
+  var saved=await dbInsertTask({text:text,bucket:bucket,done:false,confidential:isConf,must_do:isMust,task_type:taskType});
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
 }
 async function addRecurring(){
@@ -673,10 +695,14 @@ function renderTaskList(cid,bucket){
     if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
     else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
     else if(bucket==='backlog'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
+    var typeLabels={meeting:'Meeting',quick:'Quick Task',long:'Long Task',email:'Email'};
+    var typeClasses={meeting:'tag-type-meeting',quick:'tag-type-quick',long:'tag-type-long',email:'tag-type-email'};
+    var typeTag=t.task_type?'<span class="task-tag '+typeClasses[t.task_type]+'">'+typeLabels[t.task_type]+'</span>':'';
     var mustToggle=(bucket==='today'||bucket==='tomorrow')?'<button class="task-btn'+(t.must_do?' danger':'')+'" title="'+(t.must_do?'Remove must-do':'Mark as must-do')+'" onclick="toggleMustDo(\''+t.id+'\')">'+(t.must_do?'&#x1F534;':'&#9711;')+'</button>':'';
     return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+(t.must_do?' mustdo':'')+'">'
       +'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'
       +'<span class="task-text">'+esc(t.text)+'</span>'
+      +typeTag
       +(t.must_do?'<span class="task-tag tag-mustdo">Must do</span>':'')
       +(t.confidential?'<span class="task-tag tag-conf">private</span>':'')
       +'<div class="task-actions">'+mustToggle+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
