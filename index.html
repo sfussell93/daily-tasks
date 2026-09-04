@@ -252,6 +252,7 @@
             <div class="task-list" id="tomorrowList"></div>
             <div class="add-area">
               <input class="add-input" id="tomorrowInput" placeholder="Plan a task for tomorrow..." onkeydown="if(event.key==='Enter')addTask('tomorrow')">
+              <label class="conf-label" title="Must do tomorrow"><input type="checkbox" id="tomorrowMust"> &#x1F534;</label>
               <label class="conf-label"><input type="checkbox" id="tomorrowConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('tomorrow')">+ Add</button>
             </div>
@@ -666,13 +667,13 @@ function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace
 function renderTaskList(cid,bucket){
   var el=document.getElementById(cid);var list=tasks.filter(function(t){return t.bucket===bucket});
   if(!list.length){el.innerHTML='<div class="empty-state">No tasks yet</div>';return;}
-  if(bucket==='today'){list=list.slice().sort(function(a,b){return (b.must_do?1:0)-(a.must_do?1:0);});}
+  if(bucket==='today'||bucket==='tomorrow'){list=list.slice().sort(function(a,b){return (b.must_do?1:0)-(a.must_do?1:0);});}
   el.innerHTML=list.map(function(t){
     var mv='';
     if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
     else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
     else if(bucket==='backlog'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
-    var mustToggle=bucket==='today'?'<button class="task-btn'+(t.must_do?' danger':'')+'" title="'+(t.must_do?'Remove must-do':'Mark as must-do')+'" onclick="toggleMustDo(\''+t.id+'\')">'+(t.must_do?'&#x1F534;':'&#9711;')+'</button>':'';
+    var mustToggle=(bucket==='today'||bucket==='tomorrow')?'<button class="task-btn'+(t.must_do?' danger':'')+'" title="'+(t.must_do?'Remove must-do':'Mark as must-do')+'" onclick="toggleMustDo(\''+t.id+'\')">'+(t.must_do?'&#x1F534;':'&#9711;')+'</button>':'';
     return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+(t.must_do?' mustdo':'')+'">'
       +'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'
       +'<span class="task-text">'+esc(t.text)+'</span>'
