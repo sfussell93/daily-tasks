@@ -102,6 +102,9 @@
   .task-btn:hover{border-color:var(--text);color:var(--text)}
   .task-btn.danger:hover{border-color:var(--red);color:var(--red)}
   .task-btn.promote:hover{border-color:var(--accent);color:var(--accent)}
+  .task-text-input{font-family:'DM Mono',monospace;font-size:13px;line-height:1.4;flex:1;border:1.5px solid var(--text);border-radius:3px;padding:1px 5px;background:white;color:var(--text);outline:none;min-width:0}
+  .task-type-inline{font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:2px;background:white;color:var(--text-muted);cursor:pointer;flex-shrink:0}
+  .task-type-inline:focus{outline:none;border-color:var(--text)}
   .recurring-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:3px;border:1px solid #e0cfa0;background:var(--recurring-light)}
   .rec-btn{font-size:10px;padding:3px 7px;border:1.5px solid;border-radius:2px;background:white;cursor:pointer;font-family:inherit;font-weight:500;transition:all .12s;white-space:nowrap;flex-shrink:0}
   .rec-btn.to-today{border-color:var(--blue);color:var(--blue)}
@@ -599,6 +602,18 @@ async function copyRecurringTo(rid,bucket){
 }
 async function deleteRecurring(rid){if(!confirm('Remove from ongoing list?'))return;recurring=recurring.filter(function(x){return x.id!==rid});render();await dbDeleteRecurring(rid);}
 async function toggleMustDo(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.must_do=!t.must_do;render();await sb.from('tasks').update({must_do:t.must_do}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function saveTaskEdit(id,el){
+  var newText=el.value.trim();
+  if(!newText){el.value=tasks.find(function(x){return x.id===id}).text||'';return;}
+  var t=tasks.find(function(x){return x.id===id});if(!t)return;
+  t.text=newText;render();
+  await sb.from('tasks').update({text:newText}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
+async function saveTaskType(id,val){
+  var t=tasks.find(function(x){return x.id===id});if(!t)return;
+  t.task_type=val||null;render();
+  await sb.from('tasks').update({task_type:t.task_type}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
 async function toggleDone(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.done=!t.done;render();await dbUpdateTask(id,{done:t.done});}
 async function moveTask(id,bucket){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.bucket=bucket;t.done=false;render();await dbUpdateTask(id,{bucket:bucket,done:false});}
 async function deleteTask(id){tasks=tasks.filter(function(x){return x.id!==id});render();await dbDeleteTask(id);}
@@ -699,13 +714,20 @@ function renderTaskList(cid,bucket){
     var typeClasses={meeting:'tag-type-meeting',quick:'tag-type-quick',long:'tag-type-long',email:'tag-type-email'};
     var typeTag=t.task_type?'<span class="task-tag '+typeClasses[t.task_type]+'">'+typeLabels[t.task_type]+'</span>':'';
     var mustToggle=(bucket==='today'||bucket==='tomorrow')?'<button class="task-btn'+(t.must_do?' danger':'')+'" title="'+(t.must_do?'Remove must-do':'Mark as must-do')+'" onclick="toggleMustDo(\''+t.id+'\')">'+(t.must_do?'&#x1F534;':'&#9711;')+'</button>':'';
+    var typeSelect='<select class="task-type-inline" title="Change type" onchange="saveTaskType(\''+t.id+'\',this.value)">'
+      +'<option value=""'+((!t.task_type)?' selected':'')+'>type...</option>'
+      +'<option value="meeting"'+(t.task_type==='meeting'?' selected':'')+'>Meeting</option>'
+      +'<option value="quick"'+(t.task_type==='quick'?' selected':'')+'>Quick</option>'
+      +'<option value="long"'+(t.task_type==='long'?' selected':'')+'>Long</option>'
+      +'<option value="email"'+(t.task_type==='email'?' selected':'')+'>Email</option>'
+      +'</select>';
     return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+(t.must_do?' mustdo':'')+'">'
       +'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'
-      +'<span class="task-text">'+esc(t.text)+'</span>'
+      +'<input class="task-text-input" value="'+esc(t.text)+'" onblur="saveTaskEdit(\''+t.id+'\',this)" onkeydown="if(event.key===\'Enter\')this.blur()">'
       +typeTag
       +(t.must_do?'<span class="task-tag tag-mustdo">Must do</span>':'')
       +(t.confidential?'<span class="task-tag tag-conf">private</span>':'')
-      +'<div class="task-actions">'+mustToggle+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
+      +'<div class="task-actions">'+typeSelect+mustToggle+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
   }).join('');
 }
 function renderRecurring(){
