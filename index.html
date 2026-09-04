@@ -5,18 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Planner</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap');
-  :root{
-    --bg:#faf6ef;--surface:#ffffff;--surface2:#f2ede1;--border:#ddd3bd;--text:#241f1a;--text-muted:#8a7d68;
-    --accent:#0f9d58;--accent-light:#e3f7ea;
-    --amber:#f97316;--amber-light:#fef0e2;
-    --red:#e11d48;
-    --blue:#2563eb;--blue-light:#e8f0fc;
-    --confidential:#9333ea;--confidential-light:#f3e8fd;
-    --tomorrow:#0891b2;--tomorrow-light:#e0f5f8;
-    --recurring:#db2777;--recurring-light:#fdf0f7
-  }
+  :root{--bg:#f5f0e8;--surface:#fffdf7;--surface2:#f0ebe0;--border:#d4ccb8;--text:#2a2520;--text-muted:#7a6f60;--accent:#2d5a3d;--accent-light:#e8f2eb;--amber:#b85c00;--amber-light:#fef3e2;--red:#8b2020;--blue:#1a3a5c;--blue-light:#e8f0f8;--confidential:#4a1a6b;--confidential-light:#f3eaf8;--tomorrow:#1a4a4a;--tomorrow-light:#e8f2f2;--recurring:#5c3a00;--recurring-light:#fdf5e8;--meeting:#2a1a5c;--meeting-light:#eeebf8;--techgoal:#1a5c2a;--techgoal-light:#e8f5ec}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;padding:24px}
   #loadingOverlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:'Fraunces',serif;font-size:18px;color:var(--text-muted);z-index:100}
@@ -53,14 +45,17 @@
   .sync-label{font-size:10px;color:var(--text-muted);display:flex;align-items:center}
   .signout-btn{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border:1px solid var(--border);border-radius:3px;background:white;cursor:pointer;color:var(--text-muted)}
   .signout-btn:hover{border-color:var(--red);color:var(--red)}
-  .tab-nav{display:flex;flex-wrap:wrap;border:1.5px solid var(--border);border-radius:4px;background:var(--surface2);margin-bottom:16px}
+  .tab-nav{display:flex;border:1.5px solid var(--border);border-radius:4px;overflow:hidden;background:var(--surface2);margin-bottom:16px}
   .tab-btn{flex:1;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;padding:10px 4px;border:none;border-right:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-muted);transition:all .15s}
+  .tab-btn:last-child{border-right:none}
   .tab-btn:hover{background:var(--surface);color:var(--text)}
   .tab-btn.active{background:var(--surface);color:var(--text)}
   .tab-btn.active.tab-today{box-shadow:inset 0 -2px 0 var(--blue)}
   .tab-btn.active.tab-tomorrow{box-shadow:inset 0 -2px 0 var(--tomorrow)}
-  .tab-add-btn{flex-shrink:0;width:38px;font-family:'DM Mono',monospace;font-size:16px;border:none;border-left:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-muted);border-radius:0 4px 4px 0}
-  .tab-add-btn:hover{background:var(--surface);color:var(--text)}
+  .tab-btn.active.tab-recurring{box-shadow:inset 0 -2px 0 var(--recurring)}
+  .tab-btn.active.tab-backlog{box-shadow:inset 0 -2px 0 var(--amber)}
+  .tab-btn.active.tab-techgoals{box-shadow:inset 0 -2px 0 var(--techgoal)}
+  .tab-btn.active.tab-meetings{box-shadow:inset 0 -2px 0 var(--meeting)}
   .tab-pane{display:none;flex-direction:column;gap:16px}
   .tab-pane.active{display:flex}
   .layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
@@ -70,8 +65,8 @@
   .panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1.5px solid var(--border);background:var(--surface2);gap:8px;flex-wrap:wrap}
   .panel-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);display:flex;align-items:center;gap:8px;flex-shrink:0}
   .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .dot-today{background:var(--blue)}.dot-new{background:var(--red)}
-  .dot-tomorrow{background:var(--tomorrow)}
+  .dot-today{background:var(--blue)}.dot-new{background:var(--red)}.dot-backlog{background:var(--amber)}
+  .dot-tomorrow{background:var(--tomorrow)}.dot-recurring{background:var(--recurring)}.dot-meeting{background:var(--meeting)}
   .dot-amber{background:var(--amber)}.dot-accent{background:var(--accent)}.dot-blue{background:var(--blue)}
   .section{padding:14px 16px;border-bottom:1px solid var(--border)}
   .section:last-child{border-bottom:none}
@@ -82,6 +77,9 @@
   .task-item.done .task-text{text-decoration:line-through;color:var(--text-muted)}
   .task-item.confidential{background:var(--confidential-light);border-color:#d4b8e8}
   .task-item.carried{background:var(--amber-light);border-color:#e8c87a}
+  .task-item.mustdo{background:#fff0f0;border-color:#e88888;border-width:1.5px}
+  .task-item.mustdo .task-text{font-weight:700;color:var(--red)}
+  .tag-mustdo{background:#fff0f0;color:var(--red);border:1px solid #e88888}
   .task-check{width:16px;height:16px;border:1.5px solid var(--border);border-radius:2px;cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;background:white}
   .task-check:hover{border-color:var(--accent)}
   .task-check.checked{background:var(--accent);border-color:var(--accent)}
@@ -90,6 +88,8 @@
   .task-tag{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;padding:2px 5px;border-radius:2px;flex-shrink:0;margin-top:2px}
   .tag-conf{background:var(--confidential-light);color:var(--confidential);border:1px solid #c9a8e0}
   .tag-carried{background:var(--amber-light);color:var(--amber);border:1px solid #e8c87a}
+  .tag-assignee{background:var(--blue-light);color:var(--blue);border:1px solid #b8cce0}
+  .tag-assignee.me{background:var(--confidential-light);color:var(--confidential);border-color:#c9a8e0}
   .task-actions{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
   .task-item:hover .task-actions{opacity:1}
   .task-btn{font-size:10px;padding:2px 5px;border:1px solid var(--border);border-radius:2px;background:white;cursor:pointer;color:var(--text-muted);font-family:inherit;transition:all .12s;white-space:nowrap}
@@ -102,6 +102,15 @@
   .rec-btn.to-today:hover{background:var(--blue);color:white}
   .rec-btn.to-tmrw{border-color:var(--tomorrow);color:var(--tomorrow)}
   .rec-btn.to-tmrw:hover{background:var(--tomorrow);color:white}
+  .rec-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+  .meeting-tab-card{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:3px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;margin-bottom:8px}
+  .meeting-tab-card:hover,.meeting-tab-card.active{border-color:var(--meeting);background:var(--meeting-light)}
+  .meeting-tab-card-name{font-size:13px;flex:1}
+  .meeting-tab-card-meta{font-size:10px;color:var(--text-muted)}
+  .meeting-header-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--meeting-light);border:1.5px solid var(--meeting);border-radius:4px;flex-wrap:wrap}
+  .meeting-header-name{font-family:'Fraunces',serif;font-size:18px;font-weight:600;flex:1;color:var(--meeting)}
+  .session-badge{font-size:10px;padding:3px 8px;border-radius:2px;background:var(--blue-light);color:var(--blue);border:1px solid #b8cce0}
+  .no-meeting-selected{font-size:12px;color:var(--text-muted);text-align:center;padding:40px 20px;font-style:italic}
   .add-area{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
   .add-input{flex:1;font-family:'DM Mono',monospace;font-size:12px;padding:7px 10px;border:1.5px solid var(--border);border-radius:3px;background:white;color:var(--text);outline:none;transition:border-color .15s;min-width:0}
   .add-input:focus{border-color:var(--text)}
@@ -117,6 +126,10 @@
   .copy-btn.copied{background:var(--accent)!important}
   .start-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--tomorrow);color:white;border:none;border-radius:3px;cursor:pointer;transition:opacity .15s;width:100%}
   .start-btn:hover{opacity:.85}
+  .download-btn{font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--accent);color:white;border:none;border-radius:3px;cursor:pointer;transition:opacity .15s;width:100%;text-align:center;margin-top:10px}
+  .download-btn:hover{opacity:.85}
+  .next-session-btn{font-family:'DM Mono',monospace;font-size:11px;padding:8px 14px;background:var(--meeting);color:white;border:none;border-radius:3px;cursor:pointer;transition:opacity .15s;width:100%;text-align:center;margin-top:8px}
+  .next-session-btn:hover{opacity:.85}
   .stats-row{display:flex;padding:12px 16px;background:var(--surface2)}
   .stat{flex:1;text-align:center}
   .stat-num{font-size:20px;font-family:'Fraunces',serif;font-weight:600;line-height:1;margin-bottom:2px}
@@ -126,22 +139,20 @@
   .notice{font-size:10px;padding:8px 10px;border-radius:3px;line-height:1.55;margin-top:10px}
   .n-conf{background:var(--confidential-light);color:var(--confidential);border:1px solid #d4b8e8}
   .n-tmrw{background:var(--tomorrow-light);color:var(--tomorrow);border:1px solid #b0cfcf}
-  .n-rec{background:var(--recurring-light);color:var(--recurring);border:1px solid #f0b8d4}
+  .n-rec{background:var(--recurring-light);color:var(--recurring);border:1px solid #d4b870}
   .n-amber{background:var(--amber-light);color:var(--amber);border:1px solid #e8c87a}
   .header-btns{display:flex;gap:6px;flex-wrap:wrap}
   .hdr-btn{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:2px;background:white;cursor:pointer;color:var(--text-muted);transition:all .12s;white-space:nowrap}
   .hdr-btn:hover{border-color:var(--text);color:var(--text)}
-  .list-type-badge{font-size:9px;color:var(--text-muted);text-transform:none;letter-spacing:0;font-weight:400}
-  .tag-schedule{background:var(--amber-light);color:var(--amber);border:1px solid #f3c98a;cursor:pointer;font-size:9px;padding:2px 6px;border-radius:2px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;font-family:inherit}
-  .tag-schedule:hover{opacity:.75}
-  .type-btn{font-size:9px;padding:2px 6px;border-radius:2px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:white;color:var(--text-muted);flex-shrink:0;margin-top:2px}
-  .type-btn:hover{opacity:.75}
-  .date-btn{font-size:9px;padding:2px 6px;border-radius:2px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:white;color:var(--text-muted);flex-shrink:0;margin-top:2px}
-  .date-btn:hover{opacity:.75}
-  .date-btn.set{background:var(--blue-light);color:var(--blue);border-color:#b8cce0}
-  .type-group-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin:14px 0 6px;padding-top:10px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:6px}
-  .type-group:first-child .type-group-label{border-top:none;padding-top:0;margin-top:0}
-  .type-group .task-list{margin-bottom:0}
+  .dot-techgoal{background:var(--techgoal)}
+  .techgoal-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:3px;border:1px solid #b8d4be;background:var(--techgoal-light);flex-wrap:wrap}
+  .techgoal-item.done{opacity:.5}
+  .techgoal-item.done .task-text{text-decoration:line-through;color:var(--text-muted)}
+  .due-badge{font-size:9px;font-weight:500;padding:2px 6px;border-radius:2px;background:white;border:1px solid #b8d4be;color:var(--techgoal);white-space:nowrap;flex-shrink:0;margin-top:2px}
+  .due-badge.overdue{background:#fef0f0;border-color:#e8b8b8;color:var(--red)}
+  .due-badge.soon{background:#fef8e8;border-color:#e8d8a0;color:var(--amber)}
+  .tg-date-input{font-family:'DM Mono',monospace;font-size:11px;padding:6px 8px;border:1.5px solid var(--border);border-radius:3px;background:white;color:var(--text);outline:none;width:140px;flex-shrink:0}
+  .tg-date-input:focus{border-color:var(--techgoal)}
   @media(max-width:820px){body{padding:16px}.layout{grid-template-columns:1fr}.right-col{order:-1}}
 </style>
 </head>
@@ -189,24 +200,28 @@
   </header>
   <div class="layout">
     <div class="left-col">
-      <div class="tab-nav" id="tabNav">
-        <button class="tab-btn tab-today active" id="tabbtn-today" onclick="switchTab('today')">Today</button>
-        <button class="tab-btn tab-tomorrow" id="tabbtn-tomorrow" onclick="switchTab('tomorrow')">Tomorrow</button>
-        <span id="listTabsContainer" style="display:contents"></span>
-        <button class="tab-add-btn" onclick="addNewList()" title="Add a list">+</button>
+      <div class="tab-nav">
+        <button class="tab-btn tab-today active" onclick="switchTab('today')">Today</button>
+        <button class="tab-btn tab-tomorrow"     onclick="switchTab('tomorrow')">Tomorrow</button>
+        <button class="tab-btn tab-recurring"    onclick="switchTab('recurring')">Ongoing</button>
+        <button class="tab-btn tab-backlog"      onclick="switchTab('backlog')">Long Term Goals</button>
+        <button class="tab-btn tab-techgoals"     onclick="switchTab('techgoals')">Tech Goals 🎯</button>
+        <button class="tab-btn tab-meetings"     onclick="switchTab('meetings')">Meetings</button>
       </div>
       <div class="tab-pane active" id="pane-today">
         <div class="panel">
           <div class="panel-header">
             <span class="panel-title"><span class="dot dot-today"></span>Planned for today</span>
             <div class="header-btns">
-              <button class="hdr-btn" onclick="pullFromAnyList('today')">+ From a list</button>
+              <button class="hdr-btn" onclick="switchTab('recurring')">+ From ongoing</button>
+              <button class="hdr-btn" onclick="pullFromBacklog('today')">+ From other</button>
             </div>
           </div>
           <div class="section">
             <div class="task-list" id="todayList"></div>
             <div class="add-area">
               <input class="add-input" id="todayInput" placeholder="Add a task for today..." onkeydown="if(event.key==='Enter')addTask('today')">
+              <label class="conf-label" title="Must do today"><input type="checkbox" id="todayMust"> &#x1F534;</label>
               <label class="conf-label"><input type="checkbox" id="todayConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('today')">+ Add</button>
             </div>
@@ -230,7 +245,7 @@
             <span class="panel-title"><span class="dot dot-tomorrow"></span>Tomorrow's plan (draft)</span>
             <div class="header-btns">
               <button class="hdr-btn" onclick="carryForward()">+ Carry forward unfinished</button>
-              <button class="hdr-btn" onclick="pullFromAnyList('tomorrow')">+ From a list</button>
+              <button class="hdr-btn" onclick="pullFromBacklog('tomorrow')">+ From other</button>
             </div>
           </div>
           <div class="section">
@@ -244,7 +259,64 @@
           </div>
         </div>
       </div>
-      <div id="listPanesContainer"></div>
+      <div class="tab-pane" id="pane-recurring">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title"><span class="dot dot-recurring"></span>Ongoing tasks</span></div>
+          <div class="section">
+            <div class="task-list" id="recurringList"></div>
+            <div class="add-area" style="margin-top:12px">
+              <input class="add-input" id="recurringInput" placeholder="Add a task to your ongoing list..." onkeydown="if(event.key==='Enter')addRecurring()">
+              <button class="add-btn" onclick="addRecurring()">+ Add</button>
+            </div>
+            <div class="notice n-rec">Click Today or Tomorrow to copy a task across. Tasks stay here permanently.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane" id="pane-backlog">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><span class="dot dot-backlog"></span>Long Term Goals</span>
+            <span style="font-size:10px;color:var(--text-muted)">Not today or tomorrow</span>
+          </div>
+          <div class="section">
+            <div class="task-list" id="backlogList"></div>
+            <div class="add-area">
+              <input class="add-input" id="backlogInput" placeholder="Something to remember but not urgent..." onkeydown="if(event.key==='Enter')addTask('backlog')">
+              <label class="conf-label"><input type="checkbox" id="backlogConf"> &#128274;</label>
+              <button class="add-btn" onclick="addTask('backlog')">+ Add</button>
+            </div>
+            <div class="notice n-conf" style="margin-top:12px">Tasks marked confidential never appear in any Teams post.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane" id="pane-techgoals">
+        <div class="panel" style="border-color:#b8d4be">
+          <div class="panel-header" style="background:var(--techgoal-light)">
+            <span class="panel-title"><span class="dot dot-techgoal"></span>Tech Goals This Year</span>
+          </div>
+          <div class="section">
+            <div class="task-list" id="techgoalList"></div>
+            <div class="add-area" style="margin-top:12px;flex-wrap:wrap">
+              <input class="add-input" id="techgoalInput" placeholder="Add a tech goal..." onkeydown="if(event.key==='Enter')addTechGoal()">
+              <input class="tg-date-input" id="techgoalDate" type="date" title="Due date (optional)">
+              <button class="add-btn" style="background:var(--techgoal)" onclick="addTechGoal()">+ Add</button>
+            </div>
+            <div class="notice" style="background:var(--techgoal-light);color:var(--techgoal);border:1px solid #b8d4be;margin-top:12px">Track your longer-term tech goals for the year. Add an optional due date to stay on track.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane" id="pane-meetings">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><span class="dot dot-meeting"></span>My Meetings</span>
+            <button class="hdr-btn" onclick="promptNewMeeting()">+ New meeting</button>
+          </div>
+          <div class="section"><div id="meetingTabList"></div></div>
+        </div>
+        <div id="meetingDetail">
+          <div class="no-meeting-selected">Select a meeting above to view agenda and actions</div>
+        </div>
+      </div>
     </div>
     <div class="right-col">
       <div class="panel">
@@ -252,7 +324,7 @@
           <div class="stat"><div class="stat-num c-today" id="statToday">0</div><div class="stat-label">Today</div></div>
           <div class="stat"><div class="stat-num c-done"  id="statDone">0</div><div class="stat-label">Done</div></div>
           <div class="stat"><div class="stat-num c-tmrw"  id="statTmrw">0</div><div class="stat-label">Tmrw</div></div>
-          <div class="stat"><div class="stat-num c-backlog" id="statBacklog">0</div><div class="stat-label">Lists</div></div>
+          <div class="stat"><div class="stat-num c-backlog" id="statBacklog">0</div><div class="stat-label">Other</div></div>
         </div>
       </div>
       <div class="panel">
@@ -279,6 +351,15 @@
           <button class="start-btn" onclick="startTomorrow()">Start Tomorrow - move to Today</button>
         </div>
       </div>
+      <div class="panel" style="border-color:#c0b8e8">
+        <div class="panel-header" style="background:#f0eef8">
+          <span class="panel-title" style="color:var(--meeting)">Meeting Summary</span>
+        </div>
+        <div class="post-content">
+          <div class="post-box" id="meetingPost" style="border-color:#c0b8e8;background:#f0eef8;font-size:11px">Select a meeting in the Meetings tab to generate a summary</div>
+          <button class="copy-btn" id="meetingCopyBtn" onclick="copyPost('meeting')" style="background:var(--meeting)">Copy for Teams</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -294,11 +375,9 @@ const FIXED_EMAIL= 'sian.fussell@gmail.com';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-var tasks=[],ongoingItems=[],lists=[];
-var currentTab='today';
+var tasks=[],recurring=[],meetings=[],sessions={},agendaItems={},mActions={},techGoals=[];
+var activeMeeting=null,activeSession=null;
 var pinBuffer='',pinSetupFirst='',pinMode='enter';
-var LIST_COLORS=['#db2777','#0891b2','#f97316','#7c3aed','#0f9d58','#eab308','#e11d48','#2563eb'];
-function colorForList(i){return LIST_COLORS[i % LIST_COLORS.length];}
 
 document.getElementById('dateDisplay').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
@@ -386,7 +465,8 @@ async function signInToSupabase(pin){
 }
 
 async function signOut(){
-  tasks=[];ongoingItems=[];lists=[];currentTab='today';
+  tasks=[];recurring=[];meetings=[];sessions={};agendaItems={};mActions={};techGoals=[];
+  activeMeeting=null;activeSession=null;
   await sb.auth.signOut();
   pinBuffer='';pinMode='enter';pinSetupFirst='';updateDots();
   document.getElementById('pinMsg').textContent='';document.getElementById('pinMsg').className='pin-msg';
@@ -401,189 +481,110 @@ async function loadData(){
     var r=await Promise.all([
       sb.from('tasks').select('*').eq('user_id',FIXED_UID).order('created_at'),
       sb.from('recurring').select('*').eq('user_id',FIXED_UID).order('created_at'),
-      sb.from('lists').select('*').eq('user_id',FIXED_UID).order('sort_order',{ascending:true})
+      sb.from('meetings').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('meeting_sessions').select('*').eq('user_id',FIXED_UID).order('date',{ascending:false}),
+      sb.from('agenda_items').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('meeting_actions').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('tech_goals').select('*').eq('user_id',FIXED_UID).order('created_at')
     ]);
-    tasks=r[0].data||[];ongoingItems=r[1].data||[];lists=r[2].data||[];
+    tasks=r[0].data||[];recurring=r[1].data||[];meetings=r[2].data||[];techGoals=r[6].data||[];
+    sessions={};agendaItems={};mActions={};
+    for(var s of(r[3].data||[])){if(!sessions[s.meeting_id])sessions[s.meeting_id]=[];sessions[s.meeting_id].push(s);}
+    for(var a of(r[4].data||[])){if(!agendaItems[a.session_id])agendaItems[a.session_id]=[];agendaItems[a.session_id].push(a);}
+    for(var ac of(r[5].data||[])){if(!mActions[ac.session_id])mActions[ac.session_id]=[];mActions[ac.session_id].push(ac);}
     setSyncState('synced');
   }catch(e){setSyncState('error');console.error(e);}
-  await migrateLegacyData();
-  await autoAddScheduledTasks();
-  await autoPullDueDateTasks();
   render();
 }
 
-// Auto-adds "daily" and "this weekday" ongoing items into Today, once per calendar day.
-function todayDateStr(){
-  var d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-async function autoAddScheduledTasks(){
-  var today=todayDateStr(),dow=new Date().getDay();
-  var due=ongoingItems.filter(function(r){
-    if(!r.schedule||r.last_added_date===today)return false;
-    if(r.schedule==='daily')return true;
-    if(r.schedule.indexOf('weekly:')===0)return parseInt(r.schedule.split(':')[1],10)===dow;
-    if(r.schedule.indexOf('biweekly:')===0){
-      var p=r.schedule.split(':'),schedDow=parseInt(p[1],10),anchor=p[2];
-      if(schedDow!==dow)return false;
-      var anchorDate=new Date(anchor+'T00:00:00'),todayDate=new Date(today+'T00:00:00');
-      var diffDays=Math.round((todayDate-anchorDate)/86400000);
-      return diffDays>=0&&diffDays%14===0;
-    }
-    return false;
-  });
-  if(!due.length)return;
-  setSyncState('syncing');
-  for(var r of due){
-    var alreadyThere=tasks.some(function(t){return t.bucket==='today'&&t.text===r.text&&!t.done;});
-    if(!alreadyThere){
-      var saved=await dbInsertTask({text:r.text,bucket:'today',done:false,confidential:false,type:r.type||null});
-      if(saved)tasks.push(saved);
-    }
-    r.last_added_date=today;
-    await sb.from('recurring').update({last_added_date:today}).eq('id',r.id).eq('user_id',FIXED_UID);
-  }
-  setSyncState('synced');
-}
-
-// One-time migration: turns the old fixed "Ongoing" and "Other" tabs into
-// rows in the new `lists` table, and moves existing items across.
-// Requires the `lists` table and `recurring.list_id` column to exist in Supabase.
-async function migrateLegacyData(){
-  if(lists.length>0)return;
-  var hasLegacyBacklog=tasks.some(function(t){return t.bucket==='backlog'});
-  if(!hasLegacyBacklog && !ongoingItems.length)return;
-  setSyncState('syncing');
-  try{
-    var ongoingRes=await sb.from('lists').insert({user_id:FIXED_UID,name:'Ongoing',type:'ongoing',sort_order:0}).select().single();
-    var otherRes=await sb.from('lists').insert({user_id:FIXED_UID,name:'Other',type:'checklist',sort_order:1}).select().single();
-    if(ongoingRes.error||otherRes.error){setSyncState('error');console.error('Migration failed - have you run the lists SQL yet?',ongoingRes.error||otherRes.error);return;}
-    lists.push(ongoingRes.data,otherRes.data);
-    var ongoingId=ongoingRes.data.id,otherId=otherRes.data.id;
-    if(ongoingItems.length){
-      await sb.from('recurring').update({list_id:ongoingId}).eq('user_id',FIXED_UID).is('list_id',null);
-      ongoingItems.forEach(function(o){o.list_id=ongoingId;});
-    }
-    if(hasLegacyBacklog){
-      await sb.from('tasks').update({bucket:otherId}).eq('user_id',FIXED_UID).eq('bucket','backlog');
-      tasks.forEach(function(t){if(t.bucket==='backlog')t.bucket=otherId;});
-    }
-    setSyncState('synced');
-  }catch(e){setSyncState('error');console.error('Migration failed',e);}
-}
-
-async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,type:t.type||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbUpdateTask(id,c){setSyncState('syncing');await sb.from('tasks').update(c).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbDeleteTask(id){setSyncState('syncing');await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function dbInsertRecurring(text){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbDeleteRecurring(id){setSyncState('syncing');await sb.from('recurring').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 
-function switchTab(tabId){
-  currentTab=tabId;
+async function addTechGoal(){
+  var input=document.getElementById('techgoalInput'),dateEl=document.getElementById('techgoalDate');
+  var text=input.value.trim();if(!text)return;
+  var due=dateEl.value||null;input.value='';dateEl.value='';
+  var tmp='tmp_'+Date.now();techGoals.push({id:tmp,text:text,due_date:due,done:false});renderTechGoals();
+  setSyncState('syncing');
+  var res=await sb.from('tech_goals').insert({user_id:FIXED_UID,text:text,due_date:due,done:false}).select().single();
+  setSyncState(res.error?'error':'synced');
+  if(res.data){techGoals=techGoals.filter(function(g){return g.id!==tmp});techGoals.push(res.data);renderTechGoals();}
+}
+async function toggleTechGoal(id){
+  var g=techGoals.find(function(x){return x.id===id});if(!g)return;g.done=!g.done;renderTechGoals();
+  await sb.from('tech_goals').update({done:g.done}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
+async function deleteTechGoal(id){
+  techGoals=techGoals.filter(function(x){return x.id!==id});renderTechGoals();
+  await sb.from('tech_goals').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
+function renderTechGoals(){
+  var el=document.getElementById('techgoalList');
+  if(!techGoals.length){el.innerHTML='<div class="empty-state">No tech goals yet — add one below!</div>';return;}
+  var today=new Date();today.setHours(0,0,0,0);
+  el.innerHTML=techGoals.map(function(g){
+    var dueBadge='';
+    if(g.due_date){
+      var d=new Date(g.due_date+'T00:00:00');
+      var diff=Math.round((d-today)/(1000*60*60*24));
+      var label=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+      var cls=diff<0?'overdue':diff<=14?'soon':'';
+      var prefix=diff<0?'Overdue: ':diff===0?'Due today: ':diff===1?'Due tomorrow: ':(diff<=14?'Due in '+diff+'d: ':'Due: ');
+      dueBadge='<span class="due-badge '+cls+'">'+prefix+label+'</span>';
+    }
+    return '<div class="techgoal-item'+(g.done?' done':'')+'">'
+      +'<div class="task-check'+(g.done?' checked':'')+'" onclick="toggleTechGoal(\''+g.id+'\')"></div>'
+      +'<span class="task-text">'+esc(g.text)+'</span>'
+      +dueBadge
+      +'<div class="task-actions"><button class="task-btn danger" onclick="deleteTechGoal(\''+g.id+'\')">x</button></div>'
+      +'</div>';
+  }).join('');
+}
+function switchTab(tab){
   document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active')});
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');if(b.dataset.color)b.style.boxShadow='';});
-  var pane=document.getElementById('pane-'+tabId);if(pane)pane.classList.add('active');
-  var btn=document.getElementById('tabbtn-'+tabId);
-  if(btn){btn.classList.add('active');if(btn.dataset.color)btn.style.boxShadow='inset 0 -2px 0 '+btn.dataset.color;}
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+  document.getElementById('pane-'+tab).classList.add('active');
+  document.querySelector('.tab-'+tab).classList.add('active');
 }
 
 async function addTask(bucket){
   var input=document.getElementById(bucket+'Input'),confEl=document.getElementById(bucket+'Conf');
+  var mustEl=document.getElementById(bucket+'Must');
   var text=input.value.trim();if(!text)return;
   input.value='';var isConf=confEl?confEl.checked:false;if(confEl)confEl.checked=false;
-  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:text,bucket:bucket,done:false,confidential:isConf});render();
-  var saved=await dbInsertTask({text:text,bucket:bucket,done:false,confidential:isConf});
+  var isMust=mustEl?mustEl.checked:false;if(mustEl)mustEl.checked=false;
+  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:text,bucket:bucket,done:false,confidential:isConf,must_do:isMust});render();
+  var saved=await dbInsertTask({text:text,bucket:bucket,done:false,confidential:isConf,must_do:isMust});
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
 }
-var TYPE_META={meeting:{label:'Meeting',color:'#4338ca'},quick:{label:'Quick',color:'#0f9d58'},long:{label:'Long',color:'#c2410c'},email:{label:'Email',color:'#0891b2'}};
-function taskTypeButtonHtml(t,isOngoing){
-  var handler=isOngoing?'editOngoingType':'editTaskType';
-  if(!t.type)return `<button class="type-btn" onclick="${handler}('${t.id}')" title="Set task type">+ type</button>`;
-  var m=TYPE_META[t.type];if(!m)return `<button class="type-btn" onclick="${handler}('${t.id}')" title="Set task type">+ type</button>`;
-  return `<button class="type-btn" style="background:${m.color}18;color:${m.color};border-color:${m.color}66" onclick="${handler}('${t.id}')" title="Click to change task type">${m.label}</button>`;
+async function addRecurring(){
+  var input=document.getElementById('recurringInput'),text=input.value.trim();if(!text)return;input.value='';
+  var tmp='tmp_'+Date.now();recurring.push({id:tmp,text:text});render();
+  var saved=await dbInsertRecurring(text);
+  if(saved){recurring=recurring.filter(function(r){return r.id!==tmp});recurring.push(saved);render();}
 }
-function promptForTaskType(defaultChoice){
-  var choice=prompt('What kind of task is this?\n\n1 = Meeting\n2 = Quick task (a few minutes)\n3 = Long task (needs a proper block of time)\n4 = Email\n\nLeave blank for no type.\n\nEnter 1, 2, 3 or 4:',defaultChoice||'');
-  if(choice===null)return undefined;
-  if(choice==='')return null;
-  if(choice==='1')return 'meeting';
-  if(choice==='2')return 'quick';
-  if(choice==='3')return 'long';
-  if(choice==='4')return 'email';
-  alert('Please enter 1, 2, 3, 4, or leave blank. Type not changed.');
-  return undefined;
+async function copyRecurringTo(rid,bucket){
+  var r=recurring.find(function(x){return x.id===rid});if(!r)return;
+  var btn=document.getElementById('rb-'+rid+'-'+bucket);if(btn){btn.textContent='Done';btn.disabled=true;}
+  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:r.text,bucket:bucket,done:false,confidential:false});render();
+  var saved=await dbInsertTask({text:r.text,bucket:bucket,done:false,confidential:false});
+  if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
+  if(btn)setTimeout(function(){btn.textContent=bucket==='today'?'Today':'Tomorrow';btn.disabled=false;},1600);
 }
-async function editTaskType(id){
-  var t=tasks.find(function(x){return x.id===id});if(!t)return;
-  var defaultChoice=t.type==='meeting'?'1':t.type==='quick'?'2':t.type==='long'?'3':t.type==='email'?'4':'';
-  var type=promptForTaskType(defaultChoice);
-  if(type===undefined)return;
-  t.type=type;render();await dbUpdateTask(id,{type:type});
-}
-
-function formatShortDate(iso){var d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
-function dueDateButtonHtml(t){
-  if(!t.due_date)return `<button class="date-btn" onclick="editTaskDueDate('${t.id}')" title="Auto-pull this into Today/Tomorrow on a date">+ date</button>`;
-  return `<button class="date-btn set" onclick="editTaskDueDate('${t.id}')" title="Click to change or clear">${formatShortDate(t.due_date)}</button>`;
-}
-async function editTaskDueDate(id){
-  var t=tasks.find(function(x){return x.id===id});if(!t)return;
-  var val=prompt('Pull "'+t.text+'" into Tomorrow the day before, then Today on the day itself.\n\nEnter the date as YYYY-MM-DD (leave blank to clear):',t.due_date||'');
-  if(val===null)return;
-  val=val.trim();
-  if(val===''){t.due_date=null;render();await dbUpdateTask(id,{due_date:null});return;}
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(val)){alert('Please use the format YYYY-MM-DD, e.g. 2026-08-20. Date not changed.');return;}
-  t.due_date=val;render();await dbUpdateTask(id,{due_date:val});
-}
-async function autoPullDueDateTasks(){
-  var today=todayDateStr();
-  var tmrwD=new Date();tmrwD.setDate(tmrwD.getDate()+1);
-  var tomorrowStr=tmrwD.getFullYear()+'-'+String(tmrwD.getMonth()+1).padStart(2,'0')+'-'+String(tmrwD.getDate()).padStart(2,'0');
-  var checklistIds=lists.filter(function(l){return l.type==='checklist';}).map(function(l){return l.id;});
-  var toMove=tasks.filter(function(t){
-    if(!t.due_date||checklistIds.indexOf(t.bucket)===-1)return false;
-    return t.due_date<=today||t.due_date===tomorrowStr;
-  });
-  if(!toMove.length)return;
-  for(var t of toMove){
-    var dest=t.due_date<=today?'today':'tomorrow';
-    t.bucket=dest;t.done=false;t.due_date=null;
-    await dbUpdateTask(t.id,{bucket:dest,done:false,due_date:null});
-  }
-}
-
+async function deleteRecurring(rid){if(!confirm('Remove from ongoing list?'))return;recurring=recurring.filter(function(x){return x.id!==rid});render();await dbDeleteRecurring(rid);}
+async function toggleMustDo(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.must_do=!t.must_do;render();await sb.from('tasks').update({must_do:t.must_do}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function toggleDone(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.done=!t.done;render();await dbUpdateTask(id,{done:t.done});}
 async function moveTask(id,bucket){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.bucket=bucket;t.done=false;render();await dbUpdateTask(id,{bucket:bucket,done:false});}
 async function deleteTask(id){tasks=tasks.filter(function(x){return x.id!==id});render();await dbDeleteTask(id);}
-async function editTaskText(id){
-  var t=tasks.find(function(x){return x.id===id});if(!t)return;
-  var text=prompt('Edit task:',t.text);if(text===null)return;text=text.trim();if(!text)return;
-  t.text=text;render();await dbUpdateTask(id,{text:text});
-}
-async function editOngoingText(id){
-  var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
-  var text=prompt('Edit item:',r.text);if(text===null)return;text=text.trim();if(!text)return;
-  r.text=text;render();
-  setSyncState('syncing');await sb.from('recurring').update({text:text}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
-}
 
-async function pullFromAnyList(dest){
-  var entries=[];
-  lists.forEach(function(l){
-    if(l.type==='checklist'){
-      tasks.filter(function(t){return t.bucket===l.id}).forEach(function(t){
-        entries.push({label:l.name+': '+(t.confidential?'[private] ':'')+t.text,kind:'move',id:t.id});
-      });
-    }else{
-      ongoingItems.filter(function(o){return o.list_id===l.id}).forEach(function(o){
-        entries.push({label:l.name+' (ongoing): '+o.text,kind:'copy',id:o.id});
-      });
-    }
-  });
-  if(!entries.length){alert('No items in your lists yet!');return;}
-  var listing=entries.map(function(e,i){return(i+1)+'. '+e.label;}).join('\n');
-  var ans=prompt('Pull into '+dest+':\n\n'+listing+'\n\nEnter number:');if(!ans)return;
-  var idx=parseInt(ans)-1;if(idx<0||idx>=entries.length)return;
-  var e=entries[idx];
-  if(e.kind==='move')moveTask(e.id,dest);else copyOngoingTo(e.id,dest);
+function pullFromBacklog(dest){
+  var bl=tasks.filter(function(t){return t.bucket==='backlog'});if(!bl.length){alert('Long Term Goals list is empty!');return;}
+  var list=bl.map(function(t,i){return(i+1)+'. '+(t.confidential?'[private] ':'')+t.text;}).join('\n');
+  var ans=prompt('Pull into '+dest+':\n\n'+list+'\n\nEnter number:');if(!ans)return;
+  var idx=parseInt(ans)-1;if(idx>=0&&idx<bl.length)moveTask(bl[idx].id,dest);
 }
 async function carryForward(){
   var u=tasks.filter(function(t){return t.bucket==='today'&&!t.done});if(!u.length){alert('No unfinished tasks today!');return;}
@@ -603,226 +604,128 @@ async function startTomorrow(){
   setSyncState('synced');
 }
 
-// ---- Lists (replaces the old fixed Ongoing / Other tabs) ----
-async function addNewList(){
-  var name=prompt('Name for the new list (e.g. a project name):');
-  if(!name||!name.trim())return;
-  var isOngoing=confirm('OK = Ongoing list (permanent items you copy across each day)\nCancel = To-do list (checkable tasks you tick off)');
-  var type=isOngoing?'ongoing':'checklist';
+function promptNewMeeting(){
+  var name=prompt('Meeting name:');if(!name||!name.trim())return;
+  var cadence=prompt('Cadence (optional, e.g. Every Monday 9am):')||'';
+  doCreateMeeting(name.trim(),cadence.trim());
+}
+async function doCreateMeeting(name,cadence){
   setSyncState('syncing');
-  var res=await sb.from('lists').insert({user_id:FIXED_UID,name:name.trim(),type:type,sort_order:lists.length}).select().single();
+  var res=await sb.from('meetings').insert({user_id:FIXED_UID,name:name,cadence:cadence}).select().single();
   setSyncState(res.error?'error':'synced');
-  if(res.error){alert('Error creating list: '+res.error.message);return;}
-  lists.push(res.data);
-  currentTab='list-'+res.data.id;
-  render();
+  if(res.error){alert('Error: '+res.error.message);return;}
+  if(res.data){meetings.push(res.data);renderMeetingList();selectMeeting(res.data.id);}
 }
-async function renameList(listId){
-  var list=lists.find(function(l){return l.id===listId});if(!list)return;
-  var name=prompt('Rename list:',list.name);if(!name||!name.trim())return;
-  list.name=name.trim();render();
-  setSyncState('syncing');await sb.from('lists').update({name:list.name}).eq('id',listId).eq('user_id',FIXED_UID);setSyncState('synced');
+async function deleteMeeting(id){
+  if(!confirm('Delete this meeting and all its history?'))return;
+  await sb.from('meetings').delete().eq('id',id).eq('user_id',FIXED_UID);
+  meetings=meetings.filter(function(m){return m.id!==id});delete sessions[id];
+  if(activeMeeting===id){activeMeeting=null;activeSession=null;renderMeetingDetail();}
+  renderMeetingList();
 }
-async function deleteList(listId){
-  var list=lists.find(function(l){return l.id===listId});if(!list)return;
-  if(!confirm('Delete "'+list.name+'" and everything in it? This can\'t be undone.'))return;
+async function startNewSession(meetingId){
   setSyncState('syncing');
-  if(list.type==='checklist'){
-    tasks=tasks.filter(function(t){return t.bucket!==listId});
-    await sb.from('tasks').delete().eq('bucket',listId).eq('user_id',FIXED_UID);
-  }else{
-    ongoingItems=ongoingItems.filter(function(o){return o.list_id!==listId});
-    await sb.from('recurring').delete().eq('list_id',listId).eq('user_id',FIXED_UID);
-  }
-  lists=lists.filter(function(l){return l.id!==listId});
-  await sb.from('lists').delete().eq('id',listId).eq('user_id',FIXED_UID);
-  setSyncState('synced');
-  if(currentTab==='list-'+listId)currentTab='today';
-  render();
+  var date=new Date().toISOString().split('T')[0];
+  var res=await sb.from('meeting_sessions').insert({user_id:FIXED_UID,meeting_id:meetingId,date:date}).select().single();
+  setSyncState(res.error?'error':'synced');if(!res.data)return;
+  if(!sessions[meetingId])sessions[meetingId]=[];sessions[meetingId].unshift(res.data);
+  var prev=sessions[meetingId].filter(function(s){return s.id!==res.data.id});
+  if(prev.length>0){var prevId=prev[0].id;var pa=(mActions[prevId]||[]).filter(function(a){return!a.done});for(var p of pa){var r2=await sb.from('meeting_actions').insert({user_id:FIXED_UID,session_id:res.data.id,text:p.text,done:false,assignee:p.assignee,carried_from:prevId}).select().single();if(r2.data){if(!mActions[res.data.id])mActions[res.data.id]=[];mActions[res.data.id].push(r2.data);}}}
+  activeSession=res.data.id;renderMeetingList();renderMeetingDetail();
 }
-async function addListTask(listId){
-  var input=document.getElementById('listInput-'+listId),confEl=document.getElementById('listConf-'+listId);
-  var text=input.value.trim();if(!text)return;
-  input.value='';var isConf=confEl?confEl.checked:false;if(confEl)confEl.checked=false;
-  var type=promptForTaskType();if(type===undefined)type=null;
-  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:text,bucket:listId,done:false,confidential:isConf,type:type});render();
-  var saved=await dbInsertTask({text:text,bucket:listId,done:false,confidential:isConf,type:type});
-  if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
-}
-var WEEKDAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-function promptForSchedule(defaultChoice){
-  var choice=prompt('When should this repeat?\n\n1 = Every day (auto-added to Today)\n2 = A specific day each week (auto-added to Today)\n3 = Manual only (you click Today/Tomorrow yourself)\n4 = Every other week (auto-added to Today)\n\nEnter 1, 2, 3 or 4:',defaultChoice||'3');
-  if(choice===null)return undefined;
-  if(choice==='1')return 'daily';
-  if(choice==='2'){
-    var d=prompt('Which day of the week?\n\n0 = Sunday\n1 = Monday\n2 = Tuesday\n3 = Wednesday\n4 = Thursday\n5 = Friday\n6 = Saturday\n\nEnter 0-6:','1');
-    if(d===null)return undefined;
-    var dn=parseInt(d,10);
-    if(isNaN(dn)||dn<0||dn>6){alert('Please enter a number 0-6. No repeat set - you can add one later by clicking the badge on the item.');return null;}
-    return 'weekly:'+dn;
-  }
-  if(choice==='4'){
-    var d2=prompt('Which day of the week does it fall on?\n\n0 = Sunday\n1 = Monday\n2 = Tuesday\n3 = Wednesday\n4 = Thursday\n5 = Friday\n6 = Saturday\n\nEnter 0-6:','1');
-    if(d2===null)return undefined;
-    var dn2=parseInt(d2,10);
-    if(isNaN(dn2)||dn2<0||dn2>6){alert('Please enter a number 0-6. No repeat set - you can add one later by clicking the badge on the item.');return null;}
-    var anchor=prompt('Enter any ONE date this meeting falls on (a date it actually happens), as YYYY-MM-DD - e.g. the next occurrence:');
-    if(anchor===null)return undefined;
-    anchor=anchor.trim();
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(anchor)){alert('Please use the format YYYY-MM-DD, e.g. 2026-08-17. No repeat set - you can add one later by clicking the badge on the item.');return null;}
-    return 'biweekly:'+dn2+':'+anchor;
-  }
-  return null;
-}
-async function addOngoingItem(listId){
-  var input=document.getElementById('ongoingInput-'+listId);var text=input.value.trim();if(!text)return;input.value='';
-  var schedule=promptForSchedule('3');
-  if(schedule===undefined)return;
-  var type=promptForTaskType();if(type===undefined)type=null;
-  var tmp='tmp_'+Date.now();ongoingItems.push({id:tmp,text:text,list_id:listId,schedule:schedule,last_added_date:null,type:type});render();
-  setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text,list_id:listId,schedule:schedule,last_added_date:null,type:type}).select().single();setSyncState(res.error?'error':'synced');
-  if(res.data){ongoingItems=ongoingItems.filter(function(o){return o.id!==tmp});ongoingItems.push(res.data);render();}
-}
-async function editOngoingType(id){
-  var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
-  var defaultChoice=r.type==='meeting'?'1':r.type==='quick'?'2':r.type==='long'?'3':r.type==='email'?'4':'';
-  var type=promptForTaskType(defaultChoice);
-  if(type===undefined)return;
-  r.type=type;render();
-  setSyncState('syncing');await sb.from('recurring').update({type:type}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
-}
-async function editSchedule(id){
-  var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
-  var defaultChoice=r.schedule==='daily'?'1':(r.schedule&&r.schedule.indexOf('biweekly:')===0)?'4':(r.schedule?'2':'3');
-  var schedule=promptForSchedule(defaultChoice);
-  if(schedule===undefined)return;
-  r.schedule=schedule;r.last_added_date=null;render();
-  setSyncState('syncing');await sb.from('recurring').update({schedule:schedule,last_added_date:null}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
-}
-async function copyOngoingTo(id,bucket){
-  var r=ongoingItems.find(function(x){return x.id===id});if(!r)return;
-  var btn=document.getElementById('rb-'+id+'-'+bucket);if(btn){btn.textContent='Done';btn.disabled=true;}
-  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:r.text,bucket:bucket,done:false,confidential:false,type:r.type||null});render();
-  var saved=await dbInsertTask({text:r.text,bucket:bucket,done:false,confidential:false,type:r.type||null});
-  if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
-  if(btn)setTimeout(function(){btn.textContent=bucket==='today'?'Today':'Tomorrow';btn.disabled=false;},1600);
-}
-async function deleteOngoingItem(id){
-  if(!confirm('Remove this item?'))return;
-  ongoingItems=ongoingItems.filter(function(x){return x.id!==id});render();
-  setSyncState('syncing');await sb.from('recurring').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+function selectMeeting(id){activeMeeting=id;var ms=sessions[id]||[];activeSession=ms.length?ms[0].id:null;renderMeetingList();renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();}
+function selectSession(sessionId){activeSession=sessionId;renderMeetingDetail();}
+async function addAgendaItem(sessionId){var input=document.getElementById('agendaInput');var text=input.value.trim();if(!text)return;input.value='';setSyncState('syncing');var res=await sb.from('agenda_items').insert({user_id:FIXED_UID,session_id:sessionId,text:text,done:false}).select().single();setSyncState(res.error?'error':'synced');if(res.data){if(!agendaItems[sessionId])agendaItems[sessionId]=[];agendaItems[sessionId].push(res.data);renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();}}
+async function toggleAgendaItem(id,sessionId){var item=(agendaItems[sessionId]||[]).find(function(a){return a.id===id});if(!item)return;item.done=!item.done;renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('agenda_items').update({done:item.done}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function deleteAgendaItem(id,sessionId){agendaItems[sessionId]=(agendaItems[sessionId]||[]).filter(function(a){return a.id!==id});renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('agenda_items').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function addMeetingAction(sessionId){var input=document.getElementById('mActionInput');var assignee=document.getElementById('mActionAssignee').value.trim()||'Me';var text=input.value.trim();if(!text)return;input.value='';setSyncState('syncing');var res=await sb.from('meeting_actions').insert({user_id:FIXED_UID,session_id:sessionId,text:text,done:false,assignee:assignee,carried_from:null}).select().single();setSyncState(res.error?'error':'synced');if(res.data){if(!mActions[sessionId])mActions[sessionId]=[];mActions[sessionId].push(res.data);renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();}}
+async function toggleMeetingAction(id,sessionId){var item=(mActions[sessionId]||[]).find(function(a){return a.id===id});if(!item)return;item.done=!item.done;renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('meeting_actions').update({done:item.done}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+async function deleteMeetingAction(id,sessionId){mActions[sessionId]=(mActions[sessionId]||[]).filter(function(a){return a.id!==id});renderMeetingDetail();document.getElementById('meetingPost').textContent=genMeeting();await sb.from('meeting_actions').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
+
+async function downloadDoc(meetingId,sessionId){
+  var meeting=meetings.find(function(m){return m.id===meetingId});
+  var session=(sessions[meetingId]||[]).find(function(s){return s.id===sessionId});
+  var agenda=agendaItems[sessionId]||[];var acts=mActions[sessionId]||[];
+  var date=new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var D=docx;
+  var carried=acts.filter(function(a){return a.carried_from});var newActs=acts.filter(function(a){return!a.carried_from});
+  var doneActs=acts.filter(function(a){return a.done});var openActs=acts.filter(function(a){return!a.done});
+  function mkBullet(text,strike){return new D.Paragraph({numbering:{reference:'bullets',level:0},children:[new D.TextRun({text:text,strike:!!strike,font:'Arial',size:22})]});}
+  function mkHeading(text){return new D.Paragraph({heading:D.HeadingLevel.HEADING_1,children:[new D.TextRun({text:text,font:'Arial',bold:true})]});}
+  function spacer(){return new D.Paragraph({children:[new D.TextRun('')]});}
+  var children=[new D.Paragraph({children:[new D.TextRun({text:meeting.name,font:'Arial',size:36,bold:true,color:'1a3a5c'})],spacing:{after:80}}),new D.Paragraph({children:[new D.TextRun({text:date,font:'Arial',size:22,color:'7a6f60'})],spacing:{after:240}}),spacer()];
+  if(agenda.length){children.push(mkHeading('Agenda'));agenda.forEach(function(i){children.push(mkBullet(i.text,i.done))});children.push(spacer());}
+  if(carried.length){children.push(mkHeading('Carried Forward from Last Meeting'));carried.forEach(function(a){children.push(mkBullet('['+a.assignee+'] '+a.text,a.done))});children.push(spacer());}
+  if(newActs.length){children.push(mkHeading('Actions'));newActs.forEach(function(a){children.push(mkBullet('['+a.assignee+'] '+a.text,a.done))});children.push(spacer());}
+  children.push(mkHeading('Summary'));children.push(mkBullet('Agenda items discussed: '+agenda.length));children.push(mkBullet('Actions completed: '+doneActs.length));children.push(mkBullet('Actions outstanding: '+openActs.length));
+  var doc=new D.Document({numbering:{config:[{reference:'bullets',levels:[{level:0,format:D.LevelFormat.BULLET,text:'*',alignment:D.AlignmentType.LEFT,style:{paragraph:{indent:{left:720,hanging:360}}}}]}]},styles:{default:{document:{run:{font:'Arial',size:22}}},paragraphStyles:[{id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,run:{size:28,bold:true,font:'Arial',color:'2a2520'},paragraph:{spacing:{before:240,after:120},outlineLevel:0}}]},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1440,right:1440,bottom:1440,left:1440}}},children:children}]});
+  var buffer=await D.Packer.toBlob(doc);var url=URL.createObjectURL(buffer);var a=document.createElement('a');a.href=url;a.download=meeting.name+' - '+session.date+'.docx';a.click();URL.revokeObjectURL(url);
 }
 
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function renderTaskList(cid,bucket){
   var el=document.getElementById(cid);var list=tasks.filter(function(t){return t.bucket===bucket});
   if(!list.length){el.innerHTML='<div class="empty-state">No tasks yet</div>';return;}
-  var groupDefs=[['meeting','Meetings'],['quick','Quick tasks'],['long','Long tasks'],['email','Emails'],[null,'Untyped']];
-  var html=groupDefs.map(function(g){
-    var items=list.filter(function(t){return g[0]===null?!t.type:t.type===g[0];});
-    if(!items.length)return '';
-    var rows=items.map(function(t){
-      var mv='';
-      if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
-      else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button>';}
-      return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+'">'+'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'+'<span class="task-text">'+esc(t.text)+'</span>'+(t.confidential?'<span class="task-tag tag-conf">private</span>':'')+taskTypeButtonHtml(t)+'<div class="task-actions">'+mv+'<button class="task-btn" onclick="editTaskText(\''+t.id+'\')">edit</button><button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
-    }).join('');
-    return '<div class="type-group"><div class="type-group-label">'+g[1]+' ('+items.length+')</div><div class="task-list">'+rows+'</div></div>';
-  }).join('');
-  el.innerHTML=html||'<div class="empty-state">No tasks yet</div>';
-}
-
-function renderListTabs(){
-  var el=document.getElementById('listTabsContainer');
-  el.innerHTML=lists.map(function(l,i){
-    var tabId='list-'+l.id,active=currentTab===tabId,color=colorForList(i);
-    return `<button class="tab-btn${active?' active':''}" id="tabbtn-${tabId}" data-color="${color}" style="${active?'box-shadow:inset 0 -2px 0 '+color+';':''}" onclick="switchTab('${tabId}')">${esc(l.name)}</button>`;
+  if(bucket==='today'){list=list.slice().sort(function(a,b){return (b.must_do?1:0)-(a.must_do?1:0);});}
+  el.innerHTML=list.map(function(t){
+    var mv='';
+    if(bucket==='today'||bucket==='new'){mv='<button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
+    else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
+    else if(bucket==='backlog'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
+    var mustToggle=bucket==='today'?'<button class="task-btn'+(t.must_do?' danger':'')+'" title="'+(t.must_do?'Remove must-do':'Mark as must-do')+'" onclick="toggleMustDo(\''+t.id+'\')">'+(t.must_do?'&#x1F534;':'&#9711;')+'</button>':'';
+    return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+(t.must_do?' mustdo':'')+'">'
+      +'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'
+      +'<span class="task-text">'+esc(t.text)+'</span>'
+      +(t.must_do?'<span class="task-tag tag-mustdo">Must do</span>':'')
+      +(t.confidential?'<span class="task-tag tag-conf">private</span>':'')
+      +'<div class="task-actions">'+mustToggle+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
   }).join('');
 }
-function buildListPaneHtml(list,color){
-  var active=currentTab===('list-'+list.id);
-  var body='';
-  if(list.type==='ongoing'){
-    var items=ongoingItems.filter(function(o){return o.list_id===list.id});
-    var oGroupDefs=[['meeting','Meetings'],['quick','Quick tasks'],['long','Long tasks'],['email','Emails'],[null,'Untyped']];
-    var oGroupsHtml=oGroupDefs.map(function(g){
-      var gItems=items.filter(function(o){return g[0]===null?!o.type:o.type===g[0];});
-      if(!gItems.length)return '';
-      var rows=gItems.map(function(r){
-        var schedLabel='Manual';
-        if(r.schedule==='daily')schedLabel='Every day';
-        else if(r.schedule&&r.schedule.indexOf('weekly:')===0)schedLabel=WEEKDAY_NAMES[parseInt(r.schedule.split(':')[1],10)].slice(0,3);
-        else if(r.schedule&&r.schedule.indexOf('biweekly:')===0){var bp=r.schedule.split(':');schedLabel=WEEKDAY_NAMES[parseInt(bp[1],10)].slice(0,3)+' (2wk)';}
-        return `<div class="recurring-item"><span class="task-text">${esc(r.text)}</span>
-        ${taskTypeButtonHtml({id:r.id,type:r.type},true)}
-        <button class="tag-schedule" onclick="editSchedule('${r.id}')" title="Click to change how often this repeats">${schedLabel}</button>
-        <button class="rec-btn to-today" id="rb-${r.id}-today" onclick="copyOngoingTo('${r.id}','today')">Today</button>
-        <button class="rec-btn to-tmrw" id="rb-${r.id}-tomorrow" onclick="copyOngoingTo('${r.id}','tomorrow')">Tomorrow</button>
-        <button class="task-btn" onclick="editOngoingText('${r.id}')">edit</button>
-        <button class="task-btn danger" style="opacity:.45" onclick="deleteOngoingItem('${r.id}')">x</button></div>`;
-      }).join('');
-      return `<div class="type-group"><div class="type-group-label">${g[1]} (${gItems.length})</div><div class="task-list">${rows}</div></div>`;
-    }).join('');
-    body+=oGroupsHtml||'<div class="empty-state">Nothing here yet</div>';
-    body+=`<div class="add-area" style="margin-top:12px"><input class="add-input" id="ongoingInput-${list.id}" placeholder="Add an item to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addOngoingItem('${list.id}')"><button class="add-btn" onclick="addOngoingItem('${list.id}')">+ Add</button></div>`;
-    body+=`<div class="notice n-rec">Set "Every day", a weekday, or "every other week" and it'll auto-add itself to Today, keeping its Meeting/Quick/Long/Email tag. Otherwise click Today or Tomorrow to copy it across yourself. Click either badge on an item to change it.</div>`;
-  }else{
-    var titems=tasks.filter(function(t){return t.bucket===list.id});
-    var groupDefs=[['meeting','Meetings'],['quick','Quick tasks'],['long','Long tasks'],['email','Emails'],[null,'Untyped']];
-    var groupsHtml=groupDefs.map(function(g){
-      var items=titems.filter(function(t){return g[0]===null?!t.type:t.type===g[0];});
-      if(!items.length)return '';
-      var rows=items.map(function(t){
-        return `<div class="task-item${t.done?' done':''}${t.confidential?' confidential':''}">
-        <div class="task-check${t.done?' checked':''}" onclick="toggleDone('${t.id}')"></div>
-        <span class="task-text">${esc(t.text)}</span>${t.confidential?'<span class="task-tag tag-conf">private</span>':''}${taskTypeButtonHtml(t)}${dueDateButtonHtml(t)}
-        <div class="task-actions"><button class="task-btn" onclick="moveTask('${t.id}','today')">today</button><button class="task-btn" onclick="moveTask('${t.id}','tomorrow')">tmrw</button><button class="task-btn" onclick="editTaskText('${t.id}')">edit</button><button class="task-btn danger" onclick="deleteTask('${t.id}')">x</button></div></div>`;
-      }).join('');
-      return `<div class="type-group"><div class="type-group-label">${g[1]} (${items.length})</div><div class="task-list">${rows}</div></div>`;
-    }).join('');
-    body+=groupsHtml||'<div class="empty-state">No tasks yet</div>';
-    body+=`<div class="add-area"><input class="add-input" id="listInput-${list.id}" placeholder="Add a task to ${esc(list.name)}..." onkeydown="if(event.key==='Enter')addListTask('${list.id}')"><label class="conf-label"><input type="checkbox" id="listConf-${list.id}"> &#128274;</label><button class="add-btn" onclick="addListTask('${list.id}')">+ Add</button></div>`;
-    body+=`<div class="notice n-conf">Tasks marked private never appear in any Teams post. You'll be asked Meeting / Quick / Long / Email when adding - click a task's type badge to change it, or click "+ date" to have it auto-pull into Tomorrow, then Today, on a specific date.</div>`;
+function renderRecurring(){
+  var el=document.getElementById('recurringList');
+  if(!recurring.length){el.innerHTML='<div class="empty-state">Your ongoing list is empty</div>';return;}
+  el.innerHTML=recurring.map(function(r){return '<div class="recurring-item"><span class="task-text">'+esc(r.text)+'</span><button class="rec-btn to-today" id="rb-'+r.id+'-today" onclick="copyRecurringTo(\''+r.id+'\',\'today\')">Today</button><button class="rec-btn to-tmrw" id="rb-'+r.id+'-tomorrow" onclick="copyRecurringTo(\''+r.id+'\',\'tomorrow\')">Tomorrow</button><button class="task-btn danger" style="opacity:.45" onclick="deleteRecurring(\''+r.id+'\')">x</button></div>';}).join('');
+}
+function renderMeetingList(){
+  var el=document.getElementById('meetingTabList');
+  if(!meetings.length){el.innerHTML='<div class="empty-state">No meetings yet</div>';return;}
+  el.innerHTML=meetings.map(function(m){var ms=sessions[m.id]||[];var meta=ms.length?ms.length+' session'+(ms.length!==1?'s':'')+' - last '+new Date(ms[0].date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):(m.cadence||'No sessions yet');return '<div class="meeting-tab-card'+(activeMeeting===m.id?' active':'')+'" onclick="selectMeeting(\''+m.id+'\')">'+'<span class="meeting-tab-card-name">'+esc(m.name)+'</span>'+'<span class="meeting-tab-card-meta">'+meta+'</span></div>';}).join('');
+}
+function renderMeetingDetail(){
+  var el=document.getElementById('meetingDetail');
+  if(!activeMeeting){el.innerHTML='<div class="no-meeting-selected">Select a meeting above to view agenda and actions</div>';return;}
+  var meeting=meetings.find(function(m){return m.id===activeMeeting});
+  var ms=sessions[activeMeeting]||[];var session=ms.find(function(s){return s.id===activeSession});
+  var agenda=session?(agendaItems[session.id]||[]):[];var acts=session?(mActions[session.id]||[]):[];
+  var carried=acts.filter(function(a){return a.carried_from});var fresh=acts.filter(function(a){return!a.carried_from});
+  var html='<div class="meeting-header-bar"><span class="meeting-header-name">'+esc(meeting.name)+'</span>'+(meeting.cadence?'<span style="font-size:10px;color:var(--text-muted)">'+esc(meeting.cadence)+'</span>':'')+(session?'<span class="session-badge">Session '+(ms.length-ms.findIndex(function(s){return s.id===activeSession}))+'</span>':'')+(ms.length>1?'<select style="font-family:\'DM Mono\',monospace;font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:3px;background:white;" onchange="selectSession(this.value)">'+ms.map(function(s,i){return'<option value="'+s.id+'"'+(s.id===activeSession?' selected':'')+'>'+(i===0?'Current: ':'')+new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'</option>';}).join('')+'</select>':'')+'<button class="hdr-btn" onclick="deleteMeeting(\''+activeMeeting+'\')" style="color:var(--red);border-color:var(--red)">Delete</button></div>';
+  if(!session){html+='<div class="panel"><div class="section" style="text-align:center;padding:24px"><p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">No sessions yet.</p><button class="add-btn" onclick="startNewSession(\''+activeMeeting+'\')">Start first session</button></div></div>';}
+  else{
+    var ds=new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    html+='<div class="panel"><div class="panel-header"><span class="panel-title"><span class="dot dot-blue"></span>Agenda</span><span style="font-size:10px;color:var(--text-muted)">'+ds+'</span></div><div class="section"><div class="task-list">'+renderMeetingItems(agenda,'agenda',session.id)+'</div><div class="add-area"><input class="add-input" id="agendaInput" placeholder="Add agenda item..." onkeydown="if(event.key===\'Enter\')addAgendaItem(\''+session.id+'\')"><button class="add-btn" onclick="addAgendaItem(\''+session.id+'\')">+ Add</button></div></div></div>';
+    if(carried.length>0)html+='<div class="panel"><div class="panel-header"><span class="panel-title"><span class="dot dot-amber"></span>Carried from last meeting</span><span style="font-size:10px;color:var(--amber)">'+carried.filter(function(a){return!a.done}).length+' outstanding</span></div><div class="section"><div class="task-list">'+renderMeetingItems(carried,'action',session.id)+'</div><div class="notice n-amber">Tick off as you work through them.</div></div></div>';
+    html+='<div class="panel"><div class="panel-header"><span class="panel-title"><span class="dot dot-accent"></span>Actions from this meeting</span></div><div class="section"><div class="task-list">'+renderMeetingItems(fresh,'action',session.id)+'</div><div class="add-area"><input class="add-input" id="mActionInput" placeholder="Add an action..." style="flex:2" onkeydown="if(event.key===\'Enter\')addMeetingAction(\''+session.id+'\')"><input class="add-input" id="mActionAssignee" placeholder="Me / Name..." style="flex:1;min-width:80px" value="Me"><button class="add-btn" onclick="addMeetingAction(\''+session.id+'\')">+ Add</button></div></div></div>';
+    html+='<div class="panel"><div class="section"><button class="download-btn" onclick="downloadDoc(\''+activeMeeting+'\',\''+session.id+'\')">Download Word doc</button><button class="next-session-btn" onclick="startNewSession(\''+activeMeeting+'\')">Start next session - carry forward incomplete actions</button></div></div>';
   }
-  return `<div class="tab-pane${active?' active':''}" id="pane-list-${list.id}">
-    <div class="panel"><div class="panel-header">
-      <span class="panel-title"><span class="dot" style="background:${color}"></span>${esc(list.name)}<span class="list-type-badge">${list.type==='ongoing'?'ongoing':'to-do'}</span></span>
-      <div class="header-btns"><button class="hdr-btn" onclick="renameList('${list.id}')">Rename</button><button class="hdr-btn" onclick="deleteList('${list.id}')" style="color:var(--red);border-color:var(--red)">Delete</button></div>
-    </div><div class="section">${body}</div></div></div>`;
+  el.innerHTML=html;
 }
-function renderListPanes(){
-  var container=document.getElementById('listPanesContainer');
-  container.innerHTML=lists.map(function(l,i){return buildListPaneHtml(l,colorForList(i));}).join('');
+function renderMeetingItems(items,type,sessionId){
+  if(!items.length)return'<div class="empty-state">None yet</div>';
+  return items.map(function(item){var ic=type==='action'&&item.carried_from;var tf=type==='agenda'?'toggleAgendaItem':'toggleMeetingAction';var df=type==='agenda'?'deleteAgendaItem':'deleteMeetingAction';return'<div class="task-item'+(item.done?' done':'')+(ic?' carried':'')+'">'+'<div class="task-check'+(item.done?' checked':'')+'" onclick="'+tf+'(\''+item.id+'\',\''+sessionId+'\')"></div>'+'<span class="task-text">'+esc(item.text)+'</span>'+(type==='action'?'<span class="task-tag tag-assignee'+(item.assignee==='Me'?' me':'')+'">'+esc(item.assignee)+'</span>':'')+(ic?'<span class="task-tag tag-carried">carried</span>':'')+'<div class="task-actions"><button class="task-btn danger" onclick="'+df+'(\''+item.id+'\',\''+sessionId+'\')">x</button></div></div>';}).join('');
 }
-
-function genMorning(){var t=tasks.filter(function(x){return x.bucket==='today'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='\u2022 '+x.text+'\n'}):(p+='\u2022 (to be added)\n');return p.trim();}
-function genEod(){var done=tasks.filter(function(t){return(t.bucket==='today'||t.bucket==='new')&&t.done&&!t.confidential});var notDone=tasks.filter(function(t){return t.bucket==='today'&&!t.done&&!t.confidential});var added=tasks.filter(function(t){return t.bucket==='new'&&!t.confidential});var p='Today I have:\n\n';if(done.length){p+='Completed:\n';done.forEach(function(t){p+='\u2022 '+t.text+' (done)\n'});}if(added.length){p+='\nAdded today:\n';added.forEach(function(t){p+='\u2022 '+t.text+(t.done?' (done)':'')+'\n'});}if(notDone.length){p+='\nCarrying forward:\n';notDone.forEach(function(t){p+='\u2022 '+t.text+'\n'});}if(!done.length&&!notDone.length&&!added.length)p+='(No tasks recorded today)\n';p+='\nI hope everyone has a lovely evening!';return p.trim();}
-function genTomorrow(){var t=tasks.filter(function(x){return x.bucket==='tomorrow'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='\u2022 '+x.text+'\n'}):(p+='\u2022 (add tasks in the Tomorrow tab)\n');return p.trim();}
+function genMorning(){var t=tasks.filter(function(x){return x.bucket==='today'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='* '+x.text+'\n'}):(p+='* (to be added)\n');return p.trim();}
+function genEod(){var done=tasks.filter(function(t){return(t.bucket==='today'||t.bucket==='new')&&t.done&&!t.confidential});var notDone=tasks.filter(function(t){return t.bucket==='today'&&!t.done&&!t.confidential});var added=tasks.filter(function(t){return t.bucket==='new'&&!t.confidential});var p='Today I have:\n\n';if(done.length){p+='Completed:\n';done.forEach(function(t){p+='* '+t.text+' (done)\n'});}if(added.length){p+='\nAdded today:\n';added.forEach(function(t){p+='* '+t.text+(t.done?' (done)':'')+'\n'});}if(notDone.length){p+='\nCarrying forward:\n';notDone.forEach(function(t){p+='* '+t.text+'\n'});}if(!done.length&&!notDone.length&&!added.length)p+='(No tasks recorded today)\n';p+='\nI hope everyone has a lovely evening!';return p.trim();}
+function genTomorrow(){var t=tasks.filter(function(x){return x.bucket==='tomorrow'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='* '+x.text+'\n'}):(p+='* (add tasks in the Tomorrow tab)\n');return p.trim();}
+function genMeeting(){if(!activeMeeting||!activeSession)return'Select a meeting in the Meetings tab to generate a summary';var meeting=meetings.find(function(m){return m.id===activeMeeting});var session=(sessions[activeMeeting]||[]).find(function(s){return s.id===activeSession});if(!meeting||!session)return'No session data found';var agenda=agendaItems[activeSession]||[];var acts=mActions[activeSession]||[];var carried=acts.filter(function(a){return a.carried_from});var fresh=acts.filter(function(a){return!a.carried_from});var date=new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});var p=meeting.name+' - '+date+'\n\n';if(agenda.length){p+='Agenda:\n';agenda.forEach(function(a){p+=(a.done?'(done) ':'')+' * '+a.text+'\n'});p+='\n';}if(carried.length){p+='Carried forward:\n';carried.forEach(function(a){p+=(a.done?'(done) ':'')+'* ['+a.assignee+'] '+a.text+'\n'});p+='\n';}if(fresh.length){p+='Actions:\n';fresh.forEach(function(a){p+=(a.done?'(done) ':'')+'* ['+a.assignee+'] '+a.text+'\n'});}if(!agenda.length&&!acts.length)p+='(No items recorded yet)';return p.trim();}
 
 async function copyPost(which){
-  var text=which==='morning'?genMorning():which==='eod'?genEod():genTomorrow();
-  var btnId=which==='morning'?'morningCopyBtn':which==='eod'?'eodCopyBtn':'tomorrowCopyBtn';
+  var text=which==='morning'?genMorning():which==='eod'?genEod():which==='tomorrow'?genTomorrow():genMeeting();
+  var btnId=which==='morning'?'morningCopyBtn':which==='eod'?'eodCopyBtn':which==='tomorrow'?'tomorrowCopyBtn':'meetingCopyBtn';
   await navigator.clipboard.writeText(text);var btn=document.getElementById(btnId);var orig=btn.textContent;
   btn.textContent='Copied!';btn.classList.add('copied');setTimeout(function(){btn.textContent=orig;btn.classList.remove('copied');},2000);
 }
-function updateStats(){
-  document.getElementById('statToday').textContent=tasks.filter(function(t){return t.bucket==='today'||t.bucket==='new'}).length;
-  document.getElementById('statDone').textContent=tasks.filter(function(t){return t.done}).length;
-  document.getElementById('statTmrw').textContent=tasks.filter(function(t){return t.bucket==='tomorrow'}).length;
-  var checklistIds=lists.filter(function(l){return l.type==='checklist'}).map(function(l){return l.id});
-  document.getElementById('statBacklog').textContent=tasks.filter(function(t){return checklistIds.indexOf(t.bucket)!==-1}).length;
-}
-function render(){
-  renderTaskList('todayList','today');
-  renderTaskList('newList','new');
-  renderTaskList('tomorrowList','tomorrow');
-  renderListTabs();
-  renderListPanes();
-  document.getElementById('morningPost').textContent=genMorning();
-  document.getElementById('eodPost').textContent=genEod();
-  document.getElementById('tomorrowPost').textContent=genTomorrow();
-  updateStats();
-}
+function updateStats(){document.getElementById('statToday').textContent=tasks.filter(function(t){return t.bucket==='today'||t.bucket==='new'}).length;document.getElementById('statDone').textContent=tasks.filter(function(t){return t.done}).length;document.getElementById('statTmrw').textContent=tasks.filter(function(t){return t.bucket==='tomorrow'}).length;document.getElementById('statBacklog').textContent=tasks.filter(function(t){return t.bucket==='backlog'}).length;}
+function render(){renderTaskList('todayList','today');renderTaskList('newList','new');renderTaskList('tomorrowList','tomorrow');renderTaskList('backlogList','backlog');renderRecurring();renderTechGoals();renderMeetingList();renderMeetingDetail();document.getElementById('morningPost').textContent=genMorning();document.getElementById('eodPost').textContent=genEod();document.getElementById('tomorrowPost').textContent=genTomorrow();document.getElementById('meetingPost').textContent=genMeeting();updateStats();}
 
 async function boot(){
   try{
