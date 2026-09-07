@@ -321,6 +321,7 @@
                 <option value="6">Saturday</option>
                 <option value="0">Sunday</option>
               </select>
+              <input class="tg-date-input" id="recurringStartDate" type="date" title="First occurrence date" style="display:none;width:130px">
               <select class="rec-day" id="recurringMonthDay" style="display:none">
                 <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option>
                 <option value="4">4th</option><option value="5">5th</option><option value="6">6th</option>
@@ -568,7 +569,7 @@ async function loadData(){
 async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false,task_type:t.task_type||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbUpdateTask(id,c){setSyncState('syncing');await sb.from('tasks').update(c).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbDeleteTask(id){setSyncState('syncing');await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
-async function dbInsertRecurring(r){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:r.text,frequency:r.frequency||'daily',task_type:r.task_type||null,last_pulled:null,day_of_week:r.day_of_week||null,month_day:r.month_day||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbInsertRecurring(r){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:r.text,frequency:r.frequency||'daily',task_type:r.task_type||null,last_pulled:null,day_of_week:r.day_of_week||null,month_day:r.month_day||null,start_date:r.start_date||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbDeleteRecurring(id){setSyncState('syncing');await sb.from('recurring').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 
 async function addTechGoal(){
@@ -633,6 +634,7 @@ async function addTask(bucket){
 function updateAddDayPicker(){
   var freq=document.getElementById('recurringFreq').value;
   document.getElementById('recurringDay').style.display=(freq==='weekly'||freq==='fortnightly')?'':'none';
+  document.getElementById('recurringStartDate').style.display=(freq==='fortnightly')?'':'none';
   document.getElementById('recurringMonthDay').style.display=(freq==='monthly')?'':'none';
 }
 async function addRecurring(){
@@ -641,11 +643,13 @@ async function addRecurring(){
   var taskType=document.getElementById('recurringType').value||null;
   var dayOfWeek=(freq==='weekly'||freq==='fortnightly')?parseInt(document.getElementById('recurringDay').value):null;
   var monthDay=(freq==='monthly')?parseInt(document.getElementById('recurringMonthDay').value):null;
+  var startDate=(freq==='fortnightly')?(document.getElementById('recurringStartDate').value||new Date().toISOString().split('T')[0]):null;
   document.getElementById('recurringType').value='';
+  document.getElementById('recurringStartDate').value='';
   var tmp='tmp_'+Date.now();
-  recurring.push({id:tmp,text:text,frequency:freq,task_type:taskType,last_pulled:null,day_of_week:dayOfWeek,month_day:monthDay});
+  recurring.push({id:tmp,text:text,frequency:freq,task_type:taskType,last_pulled:null,day_of_week:dayOfWeek,month_day:monthDay,start_date:startDate});
   render();
-  var saved=await dbInsertRecurring({text:text,frequency:freq,task_type:taskType,day_of_week:dayOfWeek,month_day:monthDay});
+  var saved=await dbInsertRecurring({text:text,frequency:freq,task_type:taskType,day_of_week:dayOfWeek,month_day:monthDay,start_date:startDate});
   if(saved){recurring=recurring.filter(function(r){return r.id!==tmp});recurring.push(saved);render();}
 }
 async function copyRecurringTo(rid,bucket){
@@ -814,20 +818,39 @@ async function updateRecurringDay(id,val,field){
 function isDueToday(r){
   if(!r.frequency)return false;
   var today=new Date();today.setHours(0,0,0,0);
-  var todayDow=today.getDay(); // 0=Sun, 1=Mon...
+  var todayDow=today.getDay();
   var todayDom=today.getDate();
   if(r.frequency==='daily'){
     if(!r.last_pulled)return true;
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
     return Math.round((today-last)/(1000*60*60*24))>=1;
   }
-  if(r.frequency==='weekly'||r.frequency==='fortnightly'){
+  if(r.frequency==='weekly'){
     var targetDow=r.day_of_week!=null?r.day_of_week:1;
     if(todayDow!==targetDow)return false;
     if(!r.last_pulled)return true;
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
-    var diffDays=Math.round((today-last)/(1000*60*60*24));
-    return r.frequency==='weekly'?diffDays>=7:diffDays>=14;
+    return Math.round((today-last)/(1000*60*60*24))>=7;
+  }
+  if(r.frequency==='fortnightly'){
+    var targetDow=r.day_of_week!=null?r.day_of_week:1;
+    if(todayDow!==targetDow)return false;
+    // Use start_date to calculate which weeks are "on" weeks
+    var anchor=r.start_date?new Date(r.start_date+'T00:00:00'):null;
+    if(!anchor){
+      // No start date — fall back to last_pulled check
+      if(!r.last_pulled)return true;
+      var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+      return Math.round((today-last)/(1000*60*60*24))>=14;
+    }
+    anchor.setHours(0,0,0,0);
+    var diffDays=Math.round((today-anchor)/(1000*60*60*24));
+    if(diffDays<0)return false; // before start date
+    var isOnWeek=(Math.floor(diffDays/7)%2===0);
+    if(!isOnWeek)return false;
+    if(!r.last_pulled)return true;
+    var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+    return Math.round((today-last)/(1000*60*60*24))>=14;
   }
   if(r.frequency==='monthly'){
     var targetDom=r.month_day||1;
@@ -868,7 +891,11 @@ function renderRecurring(){
     var typeTag=r.task_type?'<span class="task-tag '+typeClasses[r.task_type]+'">'+typeLabels[r.task_type]+'</span>':'';
     var schedLabel='';
     if(r.frequency==='daily')schedLabel='Every day';
-    else if((r.frequency==='weekly'||r.frequency==='fortnightly')&&r.day_of_week!=null)schedLabel=(r.frequency==='fortnightly'?'Every 2 wks: ':'Weekly: ')+dowNames[r.day_of_week];
+    else if(r.frequency==='weekly'&&r.day_of_week!=null)schedLabel='Weekly: '+dowNames[r.day_of_week];
+    else if(r.frequency==='fortnightly'&&r.day_of_week!=null){
+      schedLabel='Fortnightly: '+dowNames[r.day_of_week];
+      if(r.start_date)schedLabel+=' (from '+new Date(r.start_date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})+')';
+    }
     else if(r.frequency==='monthly'&&r.month_day)schedLabel='Monthly: '+ordinal(r.month_day);
     else schedLabel=freqLabels[r.frequency]||r.frequency;
     var dueLabel='<span class="rec-due'+(due?' due-today':'')+'">'+(due?'&#10003; Due today':schedLabel)+'</span>';
@@ -880,6 +907,10 @@ function renderRecurring(){
       daySel='<select class="rec-day" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'day_of_week\')">'
         +[1,2,3,4,5,6,0].map(function(d){return'<option value="'+d+'"'+(r.day_of_week===d?' selected':'')+'>'+dowNames[d]+'</option>';}).join('')
         +'</select>';
+      if(r.frequency==='fortnightly'){
+        var sd=r.start_date||'';
+        daySel+='<input class="tg-date-input" type="date" value="'+sd+'" title="First occurrence" style="width:120px" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'start_date\')">';
+      }
     } else if(r.frequency==='monthly'){
       daySel='<select class="rec-day" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'month_day\')">'
         +Array.from({length:28},function(_,i){var d=i+1;return'<option value="'+d+'"'+(r.month_day===d?' selected':'')+'>'+ordinal(d)+'</option>';}).join('')
