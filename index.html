@@ -108,7 +108,11 @@
   .task-type-inline{font-family:'DM Mono',monospace;font-size:10px;padding:2px 4px;border:1px solid var(--border);border-radius:2px;background:white;color:var(--text-muted);cursor:pointer;flex-shrink:0}
   .task-group-header{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);padding:8px 4px 4px;border-bottom:1px solid var(--border);margin-bottom:4px;margin-top:8px}
   .task-group-header:first-child{margin-top:0}
-  .recurring-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:3px;border:1px solid #e0cfa0;background:var(--recurring-light)}
+  .recurring-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:3px;border:1px solid #e0cfa0;background:var(--recurring-light);flex-wrap:wrap}
+  .rec-freq{font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;border:1px solid #d4b870;border-radius:2px;background:white;color:var(--recurring);cursor:pointer;flex-shrink:0}
+  .rec-freq:focus{outline:none;border-color:var(--recurring)}
+  .rec-due{font-size:9px;padding:2px 5px;border-radius:2px;background:white;border:1px solid #d4b870;color:var(--recurring);flex-shrink:0}
+  .rec-due.due-today{background:#e8f2eb;border-color:#7ab890;color:var(--accent);font-weight:600}
   .rec-btn{font-size:10px;padding:3px 7px;border:1.5px solid;border-radius:2px;background:white;cursor:pointer;font-family:inherit;font-weight:500;transition:all .12s;white-space:nowrap;flex-shrink:0}
   .rec-btn.to-today{border-color:var(--blue);color:var(--blue)}
   .rec-btn.to-today:hover{background:var(--blue);color:white}
@@ -291,8 +295,21 @@
           <div class="panel-header"><span class="panel-title"><span class="dot dot-recurring"></span>Ongoing tasks</span></div>
           <div class="section">
             <div class="task-list" id="recurringList"></div>
-            <div class="add-area" style="margin-top:12px">
+            <div class="add-area" style="margin-top:12px;flex-wrap:wrap">
               <input class="add-input" id="recurringInput" placeholder="Add a task to your ongoing list..." onkeydown="if(event.key==='Enter')addRecurring()">
+              <select class="type-select" id="recurringType">
+                <option value="">Type...</option>
+                <option value="meeting">Meeting</option>
+                <option value="quick">Quick Task</option>
+                <option value="long">Long Task</option>
+                <option value="email">Email</option>
+              </select>
+              <select class="type-select" id="recurringFreq">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="fortnightly">Every 2 weeks</option>
+                <option value="monthly">Monthly</option>
+              </select>
               <button class="add-btn" onclick="addRecurring()">+ Add</button>
             </div>
             <div class="notice n-rec">Click Today or Tomorrow to copy a task across. Tasks stay here permanently.</div>
@@ -522,12 +539,13 @@ async function loadData(){
     setSyncState('synced');
   }catch(e){setSyncState('error');console.error(e);}
   render();
+  autoPullRecurring();
 }
 
 async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false,task_type:t.task_type||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbUpdateTask(id,c){setSyncState('syncing');await sb.from('tasks').update(c).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbDeleteTask(id){setSyncState('syncing');await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
-async function dbInsertRecurring(text){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:text}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbInsertRecurring(r){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:r.text,frequency:r.frequency||'daily',task_type:r.task_type||null,last_pulled:null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbDeleteRecurring(id){setSyncState('syncing');await sb.from('recurring').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 
 async function addTechGoal(){
@@ -591,16 +609,23 @@ async function addTask(bucket){
 }
 async function addRecurring(){
   var input=document.getElementById('recurringInput'),text=input.value.trim();if(!text)return;input.value='';
-  var tmp='tmp_'+Date.now();recurring.push({id:tmp,text:text});render();
-  var saved=await dbInsertRecurring(text);
+  var freq=document.getElementById('recurringFreq').value||'daily';
+  var taskType=document.getElementById('recurringType').value||null;
+  document.getElementById('recurringType').value='';
+  var tmp='tmp_'+Date.now();recurring.push({id:tmp,text:text,frequency:freq,task_type:taskType,last_pulled:null});render();
+  var saved=await dbInsertRecurring({text:text,frequency:freq,task_type:taskType});
   if(saved){recurring=recurring.filter(function(r){return r.id!==tmp});recurring.push(saved);render();}
 }
 async function copyRecurringTo(rid,bucket){
   var r=recurring.find(function(x){return x.id===rid});if(!r)return;
   var btn=document.getElementById('rb-'+rid+'-'+bucket);if(btn){btn.textContent='Done';btn.disabled=true;}
-  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:r.text,bucket:bucket,done:false,confidential:false});render();
-  var saved=await dbInsertTask({text:r.text,bucket:bucket,done:false,confidential:false});
+  var today=new Date().toISOString().split('T')[0];
+  var tmp='tmp_'+Date.now();tasks.push({id:tmp,text:r.text,bucket:bucket,done:false,confidential:false,task_type:r.task_type||null,must_do:false});render();
+  var saved=await dbInsertTask({text:r.text,bucket:bucket,done:false,confidential:false,task_type:r.task_type||null,must_do:false});
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
+  r.last_pulled=today;
+  await sb.from('recurring').update({last_pulled:today}).eq('id',rid).eq('user_id',FIXED_UID);
+  renderRecurring();
   if(btn)setTimeout(function(){btn.textContent=bucket==='today'?'Today':'Tomorrow';btn.disabled=false;},1600);
 }
 async function deleteRecurring(rid){if(!confirm('Remove from ongoing list?'))return;recurring=recurring.filter(function(x){return x.id!==rid});render();await dbDeleteRecurring(rid);}
@@ -743,10 +768,61 @@ function renderTaskList(cid,bucket){
   });
   el.innerHTML=grouped;
 }
+async function updateRecurringFreq(id,freq){
+  var r=recurring.find(function(x){return x.id===id});if(!r)return;
+  r.frequency=freq;renderRecurring();
+  await sb.from('recurring').update({frequency:freq}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
+function isDueToday(r){
+  if(!r.frequency)return false;
+  var today=new Date();today.setHours(0,0,0,0);
+  if(!r.last_pulled)return true;
+  var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+  var diffDays=Math.round((today-last)/(1000*60*60*24));
+  if(r.frequency==='daily')return diffDays>=1;
+  if(r.frequency==='weekly')return diffDays>=7;
+  if(r.frequency==='fortnightly')return diffDays>=14;
+  if(r.frequency==='monthly')return diffDays>=28;
+  return false;
+}
+async function autoPullRecurring(){
+  var today=new Date().toISOString().split('T')[0];
+  var due=recurring.filter(function(r){return isDueToday(r);});
+  for(var r of due){
+    var alreadyToday=tasks.some(function(t){return t.bucket==='today'&&t.text===r.text;});
+    if(alreadyToday){
+      r.last_pulled=today;
+      await sb.from('recurring').update({last_pulled:today}).eq('id',r.id).eq('user_id',FIXED_UID);
+      continue;
+    }
+    var saved=await dbInsertTask({text:r.text,bucket:'today',done:false,confidential:false,task_type:r.task_type||null,must_do:false});
+    if(saved){tasks.push(saved);}
+    r.last_pulled=today;
+    await sb.from('recurring').update({last_pulled:today}).eq('id',r.id).eq('user_id',FIXED_UID);
+  }
+  if(due.length)render();
+}
 function renderRecurring(){
   var el=document.getElementById('recurringList');
   if(!recurring.length){el.innerHTML='<div class="empty-state">Your ongoing list is empty</div>';return;}
-  el.innerHTML=recurring.map(function(r){return '<div class="recurring-item"><span class="task-text">'+esc(r.text)+'</span><button class="rec-btn to-today" id="rb-'+r.id+'-today" onclick="copyRecurringTo(\''+r.id+'\',\'today\')">Today</button><button class="rec-btn to-tmrw" id="rb-'+r.id+'-tomorrow" onclick="copyRecurringTo(\''+r.id+'\',\'tomorrow\')">Tomorrow</button><button class="task-btn danger" style="opacity:.45" onclick="deleteRecurring(\''+r.id+'\')">x</button></div>';}).join('');
+  var typeLabels={meeting:'Meeting',quick:'Quick Task',long:'Long Task',email:'Email'};
+  var typeClasses={meeting:'tag-type-meeting',quick:'tag-type-quick',long:'tag-type-long',email:'tag-type-email'};
+  var freqLabels={daily:'Daily',weekly:'Weekly',fortnightly:'Every 2 wks',monthly:'Monthly'};
+  el.innerHTML=recurring.map(function(r){
+    var due=isDueToday(r);
+    var typeTag=r.task_type?'<span class="task-tag '+typeClasses[r.task_type]+'">'+typeLabels[r.task_type]+'</span>':'';
+    var dueLabel='<span class="rec-due'+(due?' due-today':'')+'">'+( due?'Due today':('Next: '+(freqLabels[r.frequency]||r.frequency)))+'</span>';
+    var freqSel='<select class="rec-freq" title="Change frequency" onchange="updateRecurringFreq(\''+r.id+'\',this.value)">'
+      +['daily','weekly','fortnightly','monthly'].map(function(f){return'<option value="'+f+'"'+(r.frequency===f?' selected':'')+'>'+freqLabels[f]+'</option>';}).join('')
+      +'</select>';
+    return '<div class="recurring-item">'
+      +'<span class="task-text" style="flex:1">'+esc(r.text)+'</span>'
+      +typeTag+dueLabel+freqSel
+      +'<button class="rec-btn to-today" id="rb-'+r.id+'-today" onclick="copyRecurringTo(\''+r.id+'\',\'today\')">Today</button>'
+      +'<button class="rec-btn to-tmrw" id="rb-'+r.id+'-tomorrow" onclick="copyRecurringTo(\''+r.id+'\',\'tomorrow\')">Tomorrow</button>'
+      +'<button class="task-btn danger" style="opacity:.45" onclick="deleteRecurring(\''+r.id+'\')">x</button>'
+      +'</div>';
+  }).join('');
 }
 function renderMeetingList(){
   var el=document.getElementById('meetingTabList');
