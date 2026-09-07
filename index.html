@@ -111,6 +111,8 @@
   .recurring-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:3px;border:1px solid #e0cfa0;background:var(--recurring-light);flex-wrap:wrap}
   .rec-freq{font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;border:1px solid #d4b870;border-radius:2px;background:white;color:var(--recurring);cursor:pointer;flex-shrink:0}
   .rec-freq:focus{outline:none;border-color:var(--recurring)}
+  .rec-day{font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;border:1px solid #d4b870;border-radius:2px;background:white;color:var(--recurring);cursor:pointer;flex-shrink:0}
+  .rec-day:focus{outline:none;border-color:var(--recurring)}
   .rec-due{font-size:9px;padding:2px 5px;border-radius:2px;background:white;border:1px solid #d4b870;color:var(--recurring);flex-shrink:0}
   .rec-due.due-today{background:#e8f2eb;border-color:#7ab890;color:var(--accent);font-weight:600}
   .rec-btn{font-size:10px;padding:3px 7px;border:1.5px solid;border-radius:2px;background:white;cursor:pointer;font-family:inherit;font-weight:500;transition:all .12s;white-space:nowrap;flex-shrink:0}
@@ -304,11 +306,32 @@
                 <option value="long">Long Task</option>
                 <option value="email">Email</option>
               </select>
-              <select class="type-select" id="recurringFreq">
+              <select class="type-select" id="recurringFreq" onchange="updateAddDayPicker()">
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="fortnightly">Every 2 weeks</option>
                 <option value="monthly">Monthly</option>
+              </select>
+              <select class="rec-day" id="recurringDay" style="display:none">
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+                <option value="0">Sunday</option>
+              </select>
+              <select class="rec-day" id="recurringMonthDay" style="display:none">
+                <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option>
+                <option value="4">4th</option><option value="5">5th</option><option value="6">6th</option>
+                <option value="7">7th</option><option value="8">8th</option><option value="9">9th</option>
+                <option value="10">10th</option><option value="11">11th</option><option value="12">12th</option>
+                <option value="13">13th</option><option value="14">14th</option><option value="15">15th</option>
+                <option value="16">16th</option><option value="17">17th</option><option value="18">18th</option>
+                <option value="19">19th</option><option value="20">20th</option><option value="21">21st</option>
+                <option value="22">22nd</option><option value="23">23rd</option><option value="24">24th</option>
+                <option value="25">25th</option><option value="26">26th</option><option value="27">27th</option>
+                <option value="28">28th</option>
               </select>
               <button class="add-btn" onclick="addRecurring()">+ Add</button>
             </div>
@@ -545,7 +568,7 @@ async function loadData(){
 async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false,task_type:t.task_type||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbUpdateTask(id,c){setSyncState('syncing');await sb.from('tasks').update(c).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbDeleteTask(id){setSyncState('syncing');await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
-async function dbInsertRecurring(r){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:r.text,frequency:r.frequency||'daily',task_type:r.task_type||null,last_pulled:null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbInsertRecurring(r){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:r.text,frequency:r.frequency||'daily',task_type:r.task_type||null,last_pulled:null,day_of_week:r.day_of_week||null,month_day:r.month_day||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbDeleteRecurring(id){setSyncState('syncing');await sb.from('recurring').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 
 async function addTechGoal(){
@@ -607,13 +630,22 @@ async function addTask(bucket){
   var saved=await dbInsertTask({text:text,bucket:bucket,done:false,confidential:isConf,must_do:isMust,task_type:taskType});
   if(saved){tasks=tasks.filter(function(t){return t.id!==tmp});tasks.push(saved);render();}
 }
+function updateAddDayPicker(){
+  var freq=document.getElementById('recurringFreq').value;
+  document.getElementById('recurringDay').style.display=(freq==='weekly'||freq==='fortnightly')?'':'none';
+  document.getElementById('recurringMonthDay').style.display=(freq==='monthly')?'':'none';
+}
 async function addRecurring(){
   var input=document.getElementById('recurringInput'),text=input.value.trim();if(!text)return;input.value='';
   var freq=document.getElementById('recurringFreq').value||'daily';
   var taskType=document.getElementById('recurringType').value||null;
+  var dayOfWeek=(freq==='weekly'||freq==='fortnightly')?parseInt(document.getElementById('recurringDay').value):null;
+  var monthDay=(freq==='monthly')?parseInt(document.getElementById('recurringMonthDay').value):null;
   document.getElementById('recurringType').value='';
-  var tmp='tmp_'+Date.now();recurring.push({id:tmp,text:text,frequency:freq,task_type:taskType,last_pulled:null});render();
-  var saved=await dbInsertRecurring({text:text,frequency:freq,task_type:taskType});
+  var tmp='tmp_'+Date.now();
+  recurring.push({id:tmp,text:text,frequency:freq,task_type:taskType,last_pulled:null,day_of_week:dayOfWeek,month_day:monthDay});
+  render();
+  var saved=await dbInsertRecurring({text:text,frequency:freq,task_type:taskType,day_of_week:dayOfWeek,month_day:monthDay});
   if(saved){recurring=recurring.filter(function(r){return r.id!==tmp});recurring.push(saved);render();}
 }
 async function copyRecurringTo(rid,bucket){
@@ -773,16 +805,37 @@ async function updateRecurringFreq(id,freq){
   r.frequency=freq;renderRecurring();
   await sb.from('recurring').update({frequency:freq}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
 }
+async function updateRecurringDay(id,val,field){
+  var r=recurring.find(function(x){return x.id===id});if(!r)return;
+  var update={};r[field]=val!==''?parseInt(val):null;update[field]=r[field];
+  renderRecurring();
+  await sb.from('recurring').update(update).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
 function isDueToday(r){
   if(!r.frequency)return false;
   var today=new Date();today.setHours(0,0,0,0);
-  if(!r.last_pulled)return true;
-  var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
-  var diffDays=Math.round((today-last)/(1000*60*60*24));
-  if(r.frequency==='daily')return diffDays>=1;
-  if(r.frequency==='weekly')return diffDays>=7;
-  if(r.frequency==='fortnightly')return diffDays>=14;
-  if(r.frequency==='monthly')return diffDays>=28;
+  var todayDow=today.getDay(); // 0=Sun, 1=Mon...
+  var todayDom=today.getDate();
+  if(r.frequency==='daily'){
+    if(!r.last_pulled)return true;
+    var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+    return Math.round((today-last)/(1000*60*60*24))>=1;
+  }
+  if(r.frequency==='weekly'||r.frequency==='fortnightly'){
+    var targetDow=r.day_of_week!=null?r.day_of_week:1;
+    if(todayDow!==targetDow)return false;
+    if(!r.last_pulled)return true;
+    var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+    var diffDays=Math.round((today-last)/(1000*60*60*24));
+    return r.frequency==='weekly'?diffDays>=7:diffDays>=14;
+  }
+  if(r.frequency==='monthly'){
+    var targetDom=r.month_day||1;
+    if(todayDom!==targetDom)return false;
+    if(!r.last_pulled)return true;
+    var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+    return Math.round((today-last)/(1000*60*60*24))>=28;
+  }
   return false;
 }
 async function autoPullRecurring(){
@@ -808,16 +861,33 @@ function renderRecurring(){
   var typeLabels={meeting:'Meeting',quick:'Quick Task',long:'Long Task',email:'Email'};
   var typeClasses={meeting:'tag-type-meeting',quick:'tag-type-quick',long:'tag-type-long',email:'tag-type-email'};
   var freqLabels={daily:'Daily',weekly:'Weekly',fortnightly:'Every 2 wks',monthly:'Monthly'};
+  var dowNames={0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
+  var ordinal=function(n){return n+(n===1?'st':n===2?'nd':n===3?'rd':'th');};
   el.innerHTML=recurring.map(function(r){
     var due=isDueToday(r);
     var typeTag=r.task_type?'<span class="task-tag '+typeClasses[r.task_type]+'">'+typeLabels[r.task_type]+'</span>':'';
-    var dueLabel='<span class="rec-due'+(due?' due-today':'')+'">'+( due?'Due today':('Next: '+(freqLabels[r.frequency]||r.frequency)))+'</span>';
+    var schedLabel='';
+    if(r.frequency==='daily')schedLabel='Every day';
+    else if((r.frequency==='weekly'||r.frequency==='fortnightly')&&r.day_of_week!=null)schedLabel=(r.frequency==='fortnightly'?'Every 2 wks: ':'Weekly: ')+dowNames[r.day_of_week];
+    else if(r.frequency==='monthly'&&r.month_day)schedLabel='Monthly: '+ordinal(r.month_day);
+    else schedLabel=freqLabels[r.frequency]||r.frequency;
+    var dueLabel='<span class="rec-due'+(due?' due-today':'')+'">'+(due?'&#10003; Due today':schedLabel)+'</span>';
     var freqSel='<select class="rec-freq" title="Change frequency" onchange="updateRecurringFreq(\''+r.id+'\',this.value)">'
       +['daily','weekly','fortnightly','monthly'].map(function(f){return'<option value="'+f+'"'+(r.frequency===f?' selected':'')+'>'+freqLabels[f]+'</option>';}).join('')
       +'</select>';
+    var daySel='';
+    if(r.frequency==='weekly'||r.frequency==='fortnightly'){
+      daySel='<select class="rec-day" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'day_of_week\')">'
+        +[1,2,3,4,5,6,0].map(function(d){return'<option value="'+d+'"'+(r.day_of_week===d?' selected':'')+'>'+dowNames[d]+'</option>';}).join('')
+        +'</select>';
+    } else if(r.frequency==='monthly'){
+      daySel='<select class="rec-day" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'month_day\')">'
+        +Array.from({length:28},function(_,i){var d=i+1;return'<option value="'+d+'"'+(r.month_day===d?' selected':'')+'>'+ordinal(d)+'</option>';}).join('')
+        +'</select>';
+    }
     return '<div class="recurring-item">'
       +'<span class="task-text" style="flex:1">'+esc(r.text)+'</span>'
-      +typeTag+dueLabel+freqSel
+      +typeTag+dueLabel+freqSel+daySel
       +'<button class="rec-btn to-today" id="rb-'+r.id+'-today" onclick="copyRecurringTo(\''+r.id+'\',\'today\')">Today</button>'
       +'<button class="rec-btn to-tmrw" id="rb-'+r.id+'-tomorrow" onclick="copyRecurringTo(\''+r.id+'\',\'tomorrow\')">Tomorrow</button>'
       +'<button class="task-btn danger" style="opacity:.45" onclick="deleteRecurring(\''+r.id+'\')">x</button>'
