@@ -811,7 +811,10 @@ async function updateRecurringFreq(id,freq){
 }
 async function updateRecurringDay(id,val,field){
   var r=recurring.find(function(x){return x.id===id});if(!r)return;
-  var update={};r[field]=val!==''?parseInt(val):null;update[field]=r[field];
+  var update={};
+  if(field==='start_date'){r[field]=val||null;}
+  else{r[field]=val!==''?parseInt(val):null;}
+  update[field]=r[field];
   renderRecurring();
   await sb.from('recurring').update(update).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
 }
@@ -909,7 +912,7 @@ function renderRecurring(){
         +'</select>';
       if(r.frequency==='fortnightly'){
         var sd=r.start_date||'';
-        daySel+='<input class="tg-date-input" type="date" value="'+sd+'" title="First occurrence" style="width:120px" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'start_date\')">';
+        daySel+='<input class="tg-date-input" type="date"'+(sd?' value="'+sd+'"':'')+' title="First occurrence (pick the first date this should run)" style="width:120px" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'start_date\')">';
       }
     } else if(r.frequency==='monthly'){
       daySel='<select class="rec-day" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'month_day\')">'
