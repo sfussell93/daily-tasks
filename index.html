@@ -100,6 +100,11 @@
   .task-btn:hover{border-color:var(--text);color:var(--text)}
   .task-btn.danger:hover{border-color:var(--red);color:var(--red)}
   .task-btn.promote:hover{border-color:var(--accent);color:var(--accent)}
+  .task-btn.inprogress{border-color:#b07000;color:#b07000;background:#fef8e8}
+  .task-btn.inprogress:hover{background:#b07000;color:white}
+  .task-item.inprogress{background:#fef8e8;border-color:#e8c84a;border-width:1.5px}
+  .task-item.inprogress .task-text-input{color:#7a5000}
+  .tag-inprogress{background:#fef8e8;color:#7a5000;border:1px solid #e8c84a}
   .task-text-input{font-family:'DM Mono',monospace;font-size:13px;line-height:1.4;flex:1;border:1px solid transparent;border-radius:3px;padding:1px 4px;background:transparent;color:var(--text);outline:none;min-width:0;cursor:text;word-break:break-word}
   .task-text-input:hover{border-color:var(--border);background:white}
   .task-text-input:focus{border-color:var(--text);background:white;cursor:text}
@@ -561,12 +566,12 @@ async function loadData(){
     for(var a of(r[4].data||[])){if(!agendaItems[a.session_id])agendaItems[a.session_id]=[];agendaItems[a.session_id].push(a);}
     for(var ac of(r[5].data||[])){if(!mActions[ac.session_id])mActions[ac.session_id]=[];mActions[ac.session_id].push(ac);}
     setSyncState('synced');
-  }catch(e){setSyncState('error');console.error(e);}
+  }catch(e){setSyncState('error');console.error('loadData error:',e);}
   render();
-  autoPullRecurring();
+  await autoPullRecurring();
 }
 
-async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false,task_type:t.task_type||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
+async function dbInsertTask(t){setSyncState('syncing');var res=await sb.from('tasks').insert({user_id:FIXED_UID,text:t.text,bucket:t.bucket,done:t.done,confidential:t.confidential,must_do:t.must_do||false,task_type:t.task_type||null,in_progress:t.in_progress||false}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
 async function dbUpdateTask(id,c){setSyncState('syncing');await sb.from('tasks').update(c).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbDeleteTask(id){setSyncState('syncing');await sb.from('tasks').delete().eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');}
 async function dbInsertRecurring(r){setSyncState('syncing');var res=await sb.from('recurring').insert({user_id:FIXED_UID,text:r.text,frequency:r.frequency||'daily',task_type:r.task_type||null,last_pulled:null,day_of_week:r.day_of_week||null,month_day:r.month_day||null,start_date:r.start_date||null}).select().single();setSyncState(res.error?'error':'synced');return res.data;}
@@ -678,7 +683,20 @@ async function saveTaskType(id,val){
   t.task_type=val||null;render();
   await sb.from('tasks').update({task_type:t.task_type}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
 }
-async function toggleDone(id){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.done=!t.done;render();await dbUpdateTask(id,{done:t.done});}
+async function toggleInProgress(id){
+  var t=tasks.find(function(x){return x.id===id});if(!t)return;
+  t.in_progress=!t.in_progress;
+  if(t.in_progress)t.done=false;
+  render();
+  await sb.from('tasks').update({in_progress:t.in_progress,done:t.done}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
+}
+async function toggleDone(id){
+  var t=tasks.find(function(x){return x.id===id});if(!t)return;
+  t.done=!t.done;
+  if(t.done)t.in_progress=false;
+  render();
+  await dbUpdateTask(id,{done:t.done,in_progress:t.in_progress});
+}
 async function moveTask(id,bucket){var t=tasks.find(function(x){return x.id===id});if(!t)return;t.bucket=bucket;t.done=false;render();await dbUpdateTask(id,{bucket:bucket,done:false});}
 async function deleteTask(id){tasks=tasks.filter(function(x){return x.id!==id});render();await dbDeleteTask(id);}
 
@@ -698,6 +716,7 @@ async function startTomorrow(){
   if(!tmrw.length&&!confirm('No tasks planned for tomorrow yet. Start fresh day anyway?'))return;
   var toDelete=tasks.filter(function(t){return t.done||t.bucket==='new'}).map(function(t){return t.id});
   tasks=tasks.filter(function(t){return!t.done&&t.bucket!=='new'});
+  // in_progress tasks stay in today, other today tasks also stay
   tasks.filter(function(t){return t.bucket==='today'}).forEach(function(t){t.done=false;});
   tasks.filter(function(t){return t.bucket==='tomorrow'}).forEach(function(t){t.bucket='today';t.done=false;});
   render();switchTab('today');setSyncState('syncing');
@@ -778,6 +797,7 @@ function renderTaskList(cid,bucket){
     else if(bucket==='tomorrow'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'backlog\')">other</button>';}
     else if(bucket==='backlog'){mv='<button class="task-btn promote" onclick="moveTask(\''+t.id+'\',\'today\')">today</button><button class="task-btn" onclick="moveTask(\''+t.id+'\',\'tomorrow\')">tmrw</button>';}
     var typeTag=t.task_type?'<span class="task-tag '+typeClasses[t.task_type]+'">'+typeLabels[t.task_type]+'</span>':'';
+    var inProgressBtn=(bucket==='today'||bucket==='new')?'<button class="task-btn'+(t.in_progress?' inprogress':'')+'" onclick="toggleInProgress(\''+t.id+'\')" title="Mark as ongoing">'+(t.in_progress?'⏳ Ongoing':'⏳')+'</button>':'';
     var mustToggle=(bucket==='today'||bucket==='tomorrow')?'<button class="task-btn'+(t.must_do?' danger':'')+'" title="'+(t.must_do?'Remove must-do':'Mark as must-do')+'" onclick="toggleMustDo(\''+t.id+'\')">'+(t.must_do?'&#x1F534;':'&#9711;')+'</button>':'';
     var typeSelect='<select class="task-type-inline" title="Change type" onchange="saveTaskType(\''+t.id+'\',this.value)">'
       +'<option value=""'+((!t.task_type)?' selected':'')+'>type...</option>'
@@ -786,13 +806,14 @@ function renderTaskList(cid,bucket){
       +'<option value="long"'+(t.task_type==='long'?' selected':'')+'>Long</option>'
       +'<option value="email"'+(t.task_type==='email'?' selected':'')+'>Email</option>'
       +'</select>';
-    return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+(t.must_do?' mustdo':'')+'">'
+    return '<div class="task-item'+(t.done?' done':'')+(t.confidential?' confidential':'')+(t.must_do?' mustdo':'')+(t.in_progress?' inprogress':'')+'">'
       +'<div class="task-check'+(t.done?' checked':'')+'" onclick="toggleDone(\''+t.id+'\')"></div>'
       +'<input class="task-text-input" value="'+esc(t.text)+'" onblur="saveTaskEdit(\''+t.id+'\',this)" onkeydown="if(event.key===\'Enter\')this.blur()">'
       +typeTag
+      +(t.in_progress?'<span class="task-tag tag-inprogress">Ongoing</span>':'')
       +(t.must_do?'<span class="task-tag tag-mustdo">Must do</span>':'')
       +(t.confidential?'<span class="task-tag tag-conf">private</span>':'')
-      +'<div class="task-actions">'+typeSelect+mustToggle+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
+      +'<div class="task-actions">'+typeSelect+inProgressBtn+mustToggle+mv+'<button class="task-btn danger" onclick="deleteTask(\''+t.id+'\')">x</button></div></div>';
   }
   var grouped='';
   typeOrder.forEach(function(type){
@@ -867,17 +888,23 @@ function isDueToday(r){
 async function autoPullRecurring(){
   var today=new Date().toISOString().split('T')[0];
   var due=recurring.filter(function(r){return isDueToday(r);});
+  console.log('[AutoPull] Checking',recurring.length,'recurring tasks. Due today:',due.length, due.map(function(r){return r.text;}));
   for(var r of due){
     var alreadyToday=tasks.some(function(t){return t.bucket==='today'&&t.text===r.text;});
     if(alreadyToday){
+      console.log('[AutoPull] Already in today:',r.text);
       r.last_pulled=today;
-      await sb.from('recurring').update({last_pulled:today}).eq('id',r.id).eq('user_id',FIXED_UID);
+      var upd=await sb.from('recurring').update({last_pulled:today}).eq('id',r.id).eq('user_id',FIXED_UID);
+      if(upd.error)console.error('[AutoPull] last_pulled update failed:',upd.error);
       continue;
     }
+    console.log('[AutoPull] Pulling to today:',r.text);
     var saved=await dbInsertTask({text:r.text,bucket:'today',done:false,confidential:false,task_type:r.task_type||null,must_do:false});
-    if(saved){tasks.push(saved);}
+    if(saved){tasks.push(saved);console.log('[AutoPull] Added:',r.text);}
+    else{console.error('[AutoPull] Failed to insert task for:',r.text);}
     r.last_pulled=today;
-    await sb.from('recurring').update({last_pulled:today}).eq('id',r.id).eq('user_id',FIXED_UID);
+    var upd2=await sb.from('recurring').update({last_pulled:today}).eq('id',r.id).eq('user_id',FIXED_UID);
+    if(upd2.error)console.error('[AutoPull] last_pulled update failed:',upd2.error);
   }
   if(due.length)render();
 }
@@ -956,7 +983,20 @@ function renderMeetingItems(items,type,sessionId){
   return items.map(function(item){var ic=type==='action'&&item.carried_from;var tf=type==='agenda'?'toggleAgendaItem':'toggleMeetingAction';var df=type==='agenda'?'deleteAgendaItem':'deleteMeetingAction';return'<div class="task-item'+(item.done?' done':'')+(ic?' carried':'')+'">'+'<div class="task-check'+(item.done?' checked':'')+'" onclick="'+tf+'(\''+item.id+'\',\''+sessionId+'\')"></div>'+'<span class="task-text">'+esc(item.text)+'</span>'+(type==='action'?'<span class="task-tag tag-assignee'+(item.assignee==='Me'?' me':'')+'">'+esc(item.assignee)+'</span>':'')+(ic?'<span class="task-tag tag-carried">carried</span>':'')+'<div class="task-actions"><button class="task-btn danger" onclick="'+df+'(\''+item.id+'\',\''+sessionId+'\')">x</button></div></div>';}).join('');
 }
 function genMorning(){var t=tasks.filter(function(x){return x.bucket==='today'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='* '+x.text+'\n'}):(p+='* (to be added)\n');return p.trim();}
-function genEod(){var done=tasks.filter(function(t){return(t.bucket==='today'||t.bucket==='new')&&t.done&&!t.confidential});var notDone=tasks.filter(function(t){return t.bucket==='today'&&!t.done&&!t.confidential});var added=tasks.filter(function(t){return t.bucket==='new'&&!t.confidential});var p='Today I have:\n\n';if(done.length){p+='Completed:\n';done.forEach(function(t){p+='* '+t.text+' (done)\n'});}if(added.length){p+='\nAdded today:\n';added.forEach(function(t){p+='* '+t.text+(t.done?' (done)':'')+'\n'});}if(notDone.length){p+='\nCarrying forward:\n';notDone.forEach(function(t){p+='* '+t.text+'\n'});}if(!done.length&&!notDone.length&&!added.length)p+='(No tasks recorded today)\n';p+='\nI hope everyone has a lovely evening!';return p.trim();}
+function genEod(){
+  var done=tasks.filter(function(t){return(t.bucket==='today'||t.bucket==='new')&&t.done&&!t.confidential});
+  var inProg=tasks.filter(function(t){return(t.bucket==='today'||t.bucket==='new')&&t.in_progress&&!t.done&&!t.confidential});
+  var notDone=tasks.filter(function(t){return t.bucket==='today'&&!t.done&&!t.in_progress&&!t.confidential});
+  var added=tasks.filter(function(t){return t.bucket==='new'&&!t.confidential});
+  var p='Today I have:\n\n';
+  if(done.length){p+='Completed:\n';done.forEach(function(t){p+='* '+t.text+' (done)\n'});}
+  if(inProg.length){p+='\nOngoing:\n';inProg.forEach(function(t){p+='* '+t.text+'\n'});}
+  if(added.length){p+='\nAdded today:\n';added.forEach(function(t){p+='* '+t.text+(t.done?' (done)':t.in_progress?' (ongoing)':'')+'\\n'});}
+  if(notDone.length){p+='\nCarrying forward:\n';notDone.forEach(function(t){p+='* '+t.text+'\n'});}
+  if(!done.length&&!inProg.length&&!notDone.length&&!added.length)p+='(No tasks recorded today)\n';
+  p+='\nI hope everyone has a lovely evening!';
+  return p.trim();
+}
 function genTomorrow(){var t=tasks.filter(function(x){return x.bucket==='tomorrow'&&!x.confidential});var p='Good morning, today I will be WFO and;\n\n';t.length?t.forEach(function(x){p+='* '+x.text+'\n'}):(p+='* (add tasks in the Tomorrow tab)\n');return p.trim();}
 function genMeeting(){if(!activeMeeting||!activeSession)return'Select a meeting in the Meetings tab to generate a summary';var meeting=meetings.find(function(m){return m.id===activeMeeting});var session=(sessions[activeMeeting]||[]).find(function(s){return s.id===activeSession});if(!meeting||!session)return'No session data found';var agenda=agendaItems[activeSession]||[];var acts=mActions[activeSession]||[];var carried=acts.filter(function(a){return a.carried_from});var fresh=acts.filter(function(a){return!a.carried_from});var date=new Date(session.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});var p=meeting.name+' - '+date+'\n\n';if(agenda.length){p+='Agenda:\n';agenda.forEach(function(a){p+=(a.done?'(done) ':'')+' * '+a.text+'\n'});p+='\n';}if(carried.length){p+='Carried forward:\n';carried.forEach(function(a){p+=(a.done?'(done) ':'')+'* ['+a.assignee+'] '+a.text+'\n'});p+='\n';}if(fresh.length){p+='Actions:\n';fresh.forEach(function(a){p+=(a.done?'(done) ':'')+'* ['+a.assignee+'] '+a.text+'\n'});}if(!agenda.length&&!acts.length)p+='(No items recorded yet)';return p.trim();}
 
