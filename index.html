@@ -59,6 +59,9 @@
   .tab-btn.active.tab-custom{box-shadow:inset 0 -2px 0 var(--text-muted)}
   .tab-add-btn{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;padding:10px 12px;border:none;border-left:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-muted);transition:all .15s;flex-shrink:0;white-space:nowrap}
   .tab-add-btn:hover{background:var(--surface);color:var(--text)}
+  .tab-new-input{font-family:'DM Mono',monospace;font-size:11px;padding:5px 8px;border:1.5px solid var(--text);border-radius:3px;background:white;color:var(--text);outline:none;width:120px;flex-shrink:0}
+  .tab-new-area{display:none;align-items:center;gap:4px;padding:4px 8px;border-left:1px solid var(--border);flex-shrink:0}
+  .tab-new-area.visible{display:flex}
   .tab-pane{display:none;flex-direction:column;gap:16px}
   .tab-pane.active{display:flex}
   .layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
@@ -233,7 +236,12 @@
         <button class="tab-btn tab-backlog"      onclick="switchTab('backlog')">Long Term Goals</button>
         <button class="tab-btn tab-techgoals"     onclick="switchTab('techgoals')">Tech Goals 🎯</button>
         <button class="tab-btn tab-meetings"     onclick="switchTab('meetings')">Meetings</button>
-        <button class="tab-add-btn" onclick="promptNewCustomList()" title="Add a new list">+ List</button>
+        <button class="tab-add-btn" onclick="showNewListInput()" title="Add a new list">+ List</button>
+        <div class="tab-new-area" id="newListArea">
+          <input class="tab-new-input" id="newListInput" placeholder="List name..." onkeydown="if(event.key==='Enter'){event.preventDefault();confirmNewList();}else if(event.key==='Escape')hideNewListInput();">
+          <button class="add-btn" style="padding:5px 8px;font-size:10px" onclick="confirmNewList()">OK</button>
+          <button class="task-btn" onclick="hideNewListInput()">✕</button>
+        </div>
       </div>
       <div id="customPanes"></div>
       <div class="tab-pane active" id="pane-today">
@@ -633,9 +641,21 @@ function renderTechGoals(){
       +'</div>';
   }).join('');
 }
-async function promptNewCustomList(){
-  var name=prompt('List name:');if(!name||!name.trim())return;
-  var res=await sb.from('custom_lists').insert({user_id:FIXED_UID,name:name.trim()}).select().single();
+function showNewListInput(){
+  var area=document.getElementById('newListArea');
+  area.classList.add('visible');
+  document.getElementById('newListInput').focus();
+}
+function hideNewListInput(){
+  var area=document.getElementById('newListArea');
+  area.classList.remove('visible');
+  document.getElementById('newListInput').value='';
+}
+async function confirmNewList(){
+  var name=document.getElementById('newListInput').value.trim();
+  if(!name)return;
+  hideNewListInput();
+  var res=await sb.from('custom_lists').insert({user_id:FIXED_UID,name:name}).select().single();
   if(res.error){alert('Error: '+res.error.message);return;}
   customLists.push(res.data);customItems[res.data.id]=[];
   renderCustomTabs();renderCustomPanes();
