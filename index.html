@@ -834,7 +834,14 @@ function renderTaskList(cid,bucket){
 }
 async function updateRecurringFreq(id,freq){
   var r=recurring.find(function(x){return x.id===id});if(!r)return;
-  r.frequency=freq;renderRecurring();
+  r.frequency=freq;
+  // Show/hide the day pickers without re-rendering the whole list
+  var dayEl=document.getElementById('rday-'+id);
+  var startEl=document.getElementById('rstart-'+id);
+  var monthEl=document.getElementById('rmonth-'+id);
+  if(dayEl)dayEl.style.display=(freq==='weekly'||freq==='fortnightly')?'':'none';
+  if(startEl)startEl.style.display=(freq==='fortnightly')?'':'none';
+  if(monthEl)monthEl.style.display=(freq==='monthly')?'':'none';
   await sb.from('recurring').update({frequency:freq}).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
 }
 async function updateRecurringDay(id,val,field){
@@ -860,7 +867,15 @@ function isDueToday(r,debug){
     return diff>=1;
   }
   if(r.frequency==='weekly'){
-    var targetDow=r.day_of_week!=null?r.day_of_week:1;
+    // If no day set, pull every day until a day is set
+    if(r.day_of_week==null){
+      if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (weekly, no day set, never pulled)');return true;}
+      var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+      var diff=Math.round((today-last)/(1000*60*60*24));
+      if(debug)console.log('[Due?] weekly (no day) diff:',diff);
+      return diff>=7;
+    }
+    var targetDow=parseInt(r.day_of_week);
     if(todayDow!==targetDow){if(debug)console.log('[Due?] -> NO wrong day, need:',targetDow,'got:',todayDow);return false;}
     if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled)');return true;}
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
@@ -869,8 +884,16 @@ function isDueToday(r,debug){
     return diff>=7;
   }
   if(r.frequency==='fortnightly'){
-    var targetDow=r.day_of_week!=null?r.day_of_week:1;
-    if(todayDow!==targetDow){if(debug)console.log('[Due?] -> NO wrong day');return false;}
+    // If no day set, check only by date interval
+    if(r.day_of_week==null){
+      if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (fortnightly, no day set, never pulled)');return true;}
+      var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
+      var diff=Math.round((today-last)/(1000*60*60*24));
+      if(debug)console.log('[Due?] fortnightly (no day) diff:',diff);
+      return diff>=14;
+    }
+    var targetDow=parseInt(r.day_of_week);
+    if(todayDow!==targetDow){if(debug)console.log('[Due?] -> NO wrong day, need:',targetDow,'got:',todayDow);return false;}
     var anchor=r.start_date?new Date(r.start_date+'T00:00:00'):null;
     if(!anchor){
       if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled, no anchor)');return true;}
@@ -944,17 +967,24 @@ function renderRecurring(){
       +'</select>';
     var daySel='';
     if(r.frequency==='weekly'||r.frequency==='fortnightly'){
-      daySel='<select class="rec-day" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'day_of_week\')">'
+      daySel='<select class="rec-day" id="rday-'+r.id+'" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'day_of_week\')">'
         +[1,2,3,4,5,6,0].map(function(d){return'<option value="'+d+'"'+(r.day_of_week===d?' selected':'')+'>'+dowNames[d]+'</option>';}).join('')
         +'</select>';
       if(r.frequency==='fortnightly'){
         var sd=r.start_date||'';
-        daySel+='<input class="tg-date-input" type="date"'+(sd?' value="'+sd+'"':'')+' title="First occurrence (pick the first date this should run)" style="width:120px" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'start_date\')">';
+        daySel+='<input class="tg-date-input" id="rstart-'+r.id+'" type="date"'+(sd?' value="'+sd+'"':'')+' title="First occurrence date" style="width:120px" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'start_date\')">';
+      } else {
+        daySel+='<span id="rstart-'+r.id+'" style="display:none"></span>';
       }
+      daySel+='<span id="rmonth-'+r.id+'" style="display:none"></span>';
     } else if(r.frequency==='monthly'){
-      daySel='<select class="rec-day" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'month_day\')">'
+      daySel='<span id="rday-'+r.id+'" style="display:none"></span>';
+      daySel+='<span id="rstart-'+r.id+'" style="display:none"></span>';
+      daySel+='<select class="rec-day" id="rmonth-'+r.id+'" onchange="updateRecurringDay(\''+r.id+'\',this.value,\'month_day\')">'
         +Array.from({length:28},function(_,i){var d=i+1;return'<option value="'+d+'"'+(r.month_day===d?' selected':'')+'>'+ordinal(d)+'</option>';}).join('')
         +'</select>';
+    } else {
+      daySel='<span id="rday-'+r.id+'" style="display:none"></span><span id="rstart-'+r.id+'" style="display:none"></span><span id="rmonth-'+r.id+'" style="display:none"></span>';
     }
     return '<div class="recurring-item">'
       +'<span class="task-text" style="flex:1">'+esc(r.text)+'</span>'
