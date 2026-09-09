@@ -56,6 +56,9 @@
   .tab-btn.active.tab-backlog{box-shadow:inset 0 -2px 0 var(--amber)}
   .tab-btn.active.tab-techgoals{box-shadow:inset 0 -2px 0 var(--techgoal)}
   .tab-btn.active.tab-meetings{box-shadow:inset 0 -2px 0 var(--meeting)}
+  .tab-btn.active.tab-custom{box-shadow:inset 0 -2px 0 var(--text-muted)}
+  .tab-add-btn{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;padding:10px 12px;border:none;border-left:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text-muted);transition:all .15s;flex-shrink:0;white-space:nowrap}
+  .tab-add-btn:hover{background:var(--surface);color:var(--text)}
   .tab-pane{display:none;flex-direction:column;gap:16px}
   .tab-pane.active{display:flex}
   .layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
@@ -223,14 +226,16 @@
   </header>
   <div class="layout">
     <div class="left-col">
-      <div class="tab-nav">
+      <div class="tab-nav" id="tabNav">
         <button class="tab-btn tab-today active" onclick="switchTab('today')">Today</button>
         <button class="tab-btn tab-tomorrow"     onclick="switchTab('tomorrow')">Tomorrow</button>
         <button class="tab-btn tab-recurring"    onclick="switchTab('recurring')">Ongoing</button>
         <button class="tab-btn tab-backlog"      onclick="switchTab('backlog')">Long Term Goals</button>
         <button class="tab-btn tab-techgoals"     onclick="switchTab('techgoals')">Tech Goals 🎯</button>
         <button class="tab-btn tab-meetings"     onclick="switchTab('meetings')">Meetings</button>
+        <button class="tab-add-btn" onclick="promptNewCustomList()" title="Add a new list">+ List</button>
       </div>
+      <div id="customPanes"></div>
       <div class="tab-pane active" id="pane-today">
         <div class="panel">
           <div class="panel-header">
@@ -448,7 +453,7 @@ const FIXED_EMAIL= 'sian.fussell@gmail.com';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-var tasks=[],recurring=[],meetings=[],sessions={},agendaItems={},mActions={},techGoals=[];
+var tasks=[],recurring=[],meetings=[],sessions={},agendaItems={},mActions={},techGoals=[],customLists=[],customItems={};
 var activeMeeting=null,activeSession=null;
 var pinBuffer='',pinSetupFirst='',pinMode='enter';
 
@@ -538,7 +543,7 @@ async function signInToSupabase(pin){
 }
 
 async function signOut(){
-  tasks=[];recurring=[];meetings=[];sessions={};agendaItems={};mActions={};techGoals=[];
+  tasks=[];recurring=[];meetings=[];sessions={};agendaItems={};mActions={};techGoals=[];customLists=[];customItems={};
   activeMeeting=null;activeSession=null;
   await sb.auth.signOut();
   pinBuffer='';pinMode='enter';pinSetupFirst='';updateDots();
@@ -558,7 +563,9 @@ async function loadData(){
       sb.from('meeting_sessions').select('*').eq('user_id',FIXED_UID).order('date',{ascending:false}),
       sb.from('agenda_items').select('*').eq('user_id',FIXED_UID).order('created_at'),
       sb.from('meeting_actions').select('*').eq('user_id',FIXED_UID).order('created_at'),
-      sb.from('tech_goals').select('*').eq('user_id',FIXED_UID).order('created_at')
+      sb.from('tech_goals').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('custom_lists').select('*').eq('user_id',FIXED_UID).order('created_at'),
+      sb.from('custom_items').select('*').eq('user_id',FIXED_UID).order('created_at')
     ]);
     var get=function(i){
       var r=results[i];
@@ -567,7 +574,9 @@ async function loadData(){
       return r.value.data||[];
     };
     tasks=get(0);recurring=get(1);meetings=get(2);techGoals=get(6);
-    console.log('[Load] tasks:',tasks.length,'recurring:',recurring.length,'techGoals:',techGoals.length);
+    customLists=get(7);customItems={};
+    for(var ci of get(8)){if(!customItems[ci.list_id])customItems[ci.list_id]=[];customItems[ci.list_id].push(ci);}
+    console.log('[Load] tasks:',tasks.length,'recurring:',recurring.length,'techGoals:',techGoals.length,'customLists:',customLists.length);
     sessions={};agendaItems={};mActions={};
     for(var s of get(3)){if(!sessions[s.meeting_id])sessions[s.meeting_id]=[];sessions[s.meeting_id].push(s);}
     for(var a of get(4)){if(!agendaItems[a.session_id])agendaItems[a.session_id]=[];agendaItems[a.session_id].push(a);}
@@ -624,11 +633,96 @@ function renderTechGoals(){
       +'</div>';
   }).join('');
 }
+async function promptNewCustomList(){
+  var name=prompt('List name:');if(!name||!name.trim())return;
+  var res=await sb.from('custom_lists').insert({user_id:FIXED_UID,name:name.trim()}).select().single();
+  if(res.error){alert('Error: '+res.error.message);return;}
+  customLists.push(res.data);customItems[res.data.id]=[];
+  renderCustomTabs();renderCustomPanes();
+  switchTab('custom-'+res.data.id);
+}
+async function deleteCustomList(id){
+  if(!confirm('Delete this list and all its items?'))return;
+  await sb.from('custom_lists').delete().eq('id',id).eq('user_id',FIXED_UID);
+  customLists=customLists.filter(function(l){return l.id!==id;});
+  delete customItems[id];
+  renderCustomTabs();renderCustomPanes();
+  switchTab('today');
+}
+async function addCustomItem(listId){
+  var input=document.getElementById('ci-input-'+listId);
+  var text=input.value.trim();if(!text)return;input.value='';
+  var tmp='tmp_'+Date.now();
+  if(!customItems[listId])customItems[listId]=[];
+  customItems[listId].push({id:tmp,list_id:listId,text:text,done:false});
+  renderCustomPanes();
+  var res=await sb.from('custom_items').insert({user_id:FIXED_UID,list_id:listId,text:text,done:false}).select().single();
+  if(res.data){customItems[listId]=customItems[listId].filter(function(i){return i.id!==tmp;});customItems[listId].push(res.data);renderCustomPanes();}
+}
+async function toggleCustomItem(id,listId){
+  var item=(customItems[listId]||[]).find(function(i){return i.id===id;});if(!item)return;
+  item.done=!item.done;renderCustomPanes();
+  await sb.from('custom_items').update({done:item.done}).eq('id',id).eq('user_id',FIXED_UID);
+}
+async function deleteCustomItem(id,listId){
+  customItems[listId]=(customItems[listId]||[]).filter(function(i){return i.id!==id;});
+  renderCustomPanes();
+  await sb.from('custom_items').delete().eq('id',id).eq('user_id',FIXED_UID);
+}
+function renderCustomTabs(){
+  var nav=document.getElementById('tabNav');
+  // Remove any existing custom tab buttons
+  nav.querySelectorAll('.tab-btn-custom').forEach(function(b){b.remove();});
+  var addBtn=nav.querySelector('.tab-add-btn');
+  customLists.forEach(function(l){
+    var btn=document.createElement('button');
+    btn.className='tab-btn tab-custom tab-btn-custom';
+    btn.textContent=l.name;
+    btn.onclick=function(){switchTab('custom-'+l.id);};
+    nav.insertBefore(btn,addBtn);
+  });
+}
+function renderCustomPanes(){
+  var container=document.getElementById('customPanes');
+  container.innerHTML=customLists.map(function(l){
+    var items=customItems[l.id]||[];
+    var itemsHtml=items.length?items.map(function(item){
+      return '<div class="task-item'+(item.done?' done':'')+'">'
+        +'<div class="task-check'+(item.done?' checked':'')+'" onclick="toggleCustomItem(\''+item.id+'\',\''+l.id+'\')"></div>'
+        +'<span class="task-text">'+esc(item.text)+'</span>'
+        +'<div class="task-actions"><button class="task-btn danger" onclick="deleteCustomItem(\''+item.id+'\',\''+l.id+'\')">x</button></div>'
+        +'</div>';
+    }).join(''):'<div class="empty-state">No items yet</div>';
+    return '<div class="tab-pane" id="pane-custom-'+l.id+'">'
+      +'<div class="panel">'
+      +'<div class="panel-header">'
+      +'<span class="panel-title"><span class="dot" style="background:var(--text-muted)"></span>'+esc(l.name)+'</span>'
+      +'<button class="hdr-btn" style="color:var(--red);border-color:var(--red)" onclick="deleteCustomList(\''+l.id+'\')">Delete list</button>'
+      +'</div>'
+      +'<div class="section">'
+      +'<div class="task-list">'+itemsHtml+'</div>'
+      +'<div class="add-area">'
+      +'<input class="add-input" id="ci-input-'+l.id+'" placeholder="Add an item..." onkeydown="if(event.key===\'Enter\')addCustomItem(\''+l.id+'\')">'
+      +'<button class="add-btn" onclick="addCustomItem(\''+l.id+'\')">+ Add</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
 function switchTab(tab){
   document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active')});
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
-  document.getElementById('pane-'+tab).classList.add('active');
-  document.querySelector('.tab-'+tab).classList.add('active');
+  var pane=document.getElementById('pane-'+tab);
+  if(pane)pane.classList.add('active');
+  if(tab.startsWith('custom-')){
+    document.querySelectorAll('.tab-btn-custom').forEach(function(b){
+      if(b.onclick&&b.onclick.toString().indexOf(tab)>-1)b.classList.add('active');
+    });
+  } else {
+    var btn=document.querySelector('.tab-'+tab);
+    if(btn)btn.classList.add('active');
+  }
 }
 
 async function addTask(bucket){
@@ -1034,7 +1128,7 @@ async function copyPost(which){
   btn.textContent='Copied!';btn.classList.add('copied');setTimeout(function(){btn.textContent=orig;btn.classList.remove('copied');},2000);
 }
 function updateStats(){document.getElementById('statToday').textContent=tasks.filter(function(t){return t.bucket==='today'||t.bucket==='new'}).length;document.getElementById('statDone').textContent=tasks.filter(function(t){return t.done}).length;document.getElementById('statTmrw').textContent=tasks.filter(function(t){return t.bucket==='tomorrow'}).length;document.getElementById('statBacklog').textContent=tasks.filter(function(t){return t.bucket==='backlog'}).length;}
-function render(){renderTaskList('todayList','today');renderTaskList('newList','new');renderTaskList('tomorrowList','tomorrow');renderTaskList('backlogList','backlog');renderRecurring();renderTechGoals();renderMeetingList();renderMeetingDetail();document.getElementById('morningPost').textContent=genMorning();document.getElementById('eodPost').textContent=genEod();document.getElementById('tomorrowPost').textContent=genTomorrow();document.getElementById('meetingPost').textContent=genMeeting();updateStats();}
+function render(){renderTaskList('todayList','today');renderTaskList('newList','new');renderTaskList('tomorrowList','tomorrow');renderTaskList('backlogList','backlog');renderRecurring();renderTechGoals();renderMeetingList();renderMeetingDetail();renderCustomTabs();renderCustomPanes();document.getElementById('morningPost').textContent=genMorning();document.getElementById('eodPost').textContent=genEod();document.getElementById('tomorrowPost').textContent=genTomorrow();document.getElementById('meetingPost').textContent=genMeeting();updateStats();}
 
 async function boot(){
   try{
