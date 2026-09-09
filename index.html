@@ -858,45 +858,31 @@ function isDueToday(r,debug){
   var today=new Date();today.setHours(0,0,0,0);
   var todayDow=today.getDay();
   var todayDom=today.getDate();
-  if(debug)console.log('[Due?]',r.text,'freq:',r.frequency,'last_pulled:',r.last_pulled,'day_of_week:',r.day_of_week,'todayDow:',todayDow,'todayDom:',todayDom);
+  if(debug)console.log('[Due?]',r.text,'freq:',r.frequency,'last_pulled:',r.last_pulled,'day_of_week:',r.day_of_week,'todayDow:',todayDow);
   if(r.frequency==='daily'){
-    if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled)');return true;}
+    if(!r.last_pulled)return true;
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
     var diff=Math.round((today-last)/(1000*60*60*24));
-    if(debug)console.log('[Due?] daily diff days:',diff);
+    if(debug)console.log('[Due?] daily diff:',diff);
     return diff>=1;
   }
   if(r.frequency==='weekly'){
-    // If no day set, pull every day until a day is set
-    if(r.day_of_week==null){
-      if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (weekly, no day set, never pulled)');return true;}
-      var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
-      var diff=Math.round((today-last)/(1000*60*60*24));
-      if(debug)console.log('[Due?] weekly (no day) diff:',diff);
-      return diff>=7;
-    }
+    if(r.day_of_week==null){if(debug)console.log('[Due?] -> NO (no day set)');return false;}
     var targetDow=parseInt(r.day_of_week);
     if(todayDow!==targetDow){if(debug)console.log('[Due?] -> NO wrong day, need:',targetDow,'got:',todayDow);return false;}
-    if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled)');return true;}
+    if(!r.last_pulled)return true;
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
     var diff=Math.round((today-last)/(1000*60*60*24));
-    if(debug)console.log('[Due?] weekly diff days:',diff);
+    if(debug)console.log('[Due?] weekly diff:',diff);
     return diff>=7;
   }
   if(r.frequency==='fortnightly'){
-    // If no day set, check only by date interval
-    if(r.day_of_week==null){
-      if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (fortnightly, no day set, never pulled)');return true;}
-      var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
-      var diff=Math.round((today-last)/(1000*60*60*24));
-      if(debug)console.log('[Due?] fortnightly (no day) diff:',diff);
-      return diff>=14;
-    }
+    if(r.day_of_week==null){if(debug)console.log('[Due?] -> NO (no day set)');return false;}
     var targetDow=parseInt(r.day_of_week);
     if(todayDow!==targetDow){if(debug)console.log('[Due?] -> NO wrong day, need:',targetDow,'got:',todayDow);return false;}
     var anchor=r.start_date?new Date(r.start_date+'T00:00:00'):null;
     if(!anchor){
-      if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled, no anchor)');return true;}
+      if(!r.last_pulled)return true;
       var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
       return Math.round((today-last)/(1000*60*60*24))>=14;
     }
@@ -910,9 +896,10 @@ function isDueToday(r,debug){
     return Math.round((today-last)/(1000*60*60*24))>=14;
   }
   if(r.frequency==='monthly'){
-    var targetDom=r.month_day||1;
+    if(r.month_day==null){if(debug)console.log('[Due?] -> NO (no day set)');return false;}
+    var targetDom=parseInt(r.month_day);
     if(todayDom!==targetDom){if(debug)console.log('[Due?] -> NO wrong day of month, need:',targetDom,'got:',todayDom);return false;}
-    if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled)');return true;}
+    if(!r.last_pulled)return true;
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
     return Math.round((today-last)/(1000*60*60*24))>=28;
   }
