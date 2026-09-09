@@ -551,7 +551,7 @@ async function signOut(){
 async function loadData(){
   setSyncState('syncing');
   try{
-    var r=await Promise.all([
+    var results=await Promise.allSettled([
       sb.from('tasks').select('*').eq('user_id',FIXED_UID).order('created_at'),
       sb.from('recurring').select('*').eq('user_id',FIXED_UID).order('created_at'),
       sb.from('meetings').select('*').eq('user_id',FIXED_UID).order('created_at'),
@@ -560,13 +560,20 @@ async function loadData(){
       sb.from('meeting_actions').select('*').eq('user_id',FIXED_UID).order('created_at'),
       sb.from('tech_goals').select('*').eq('user_id',FIXED_UID).order('created_at')
     ]);
-    tasks=r[0].data||[];recurring=r[1].data||[];meetings=r[2].data||[];techGoals=r[6].data||[];
+    var get=function(i){
+      var r=results[i];
+      if(r.status==='rejected'){console.error('[Load] Query '+i+' rejected:',r.reason);return[];}
+      if(r.value.error){console.error('[Load] Query '+i+' error:',r.value.error);return[];}
+      return r.value.data||[];
+    };
+    tasks=get(0);recurring=get(1);meetings=get(2);techGoals=get(6);
+    console.log('[Load] tasks:',tasks.length,'recurring:',recurring.length,'techGoals:',techGoals.length);
     sessions={};agendaItems={};mActions={};
-    for(var s of(r[3].data||[])){if(!sessions[s.meeting_id])sessions[s.meeting_id]=[];sessions[s.meeting_id].push(s);}
-    for(var a of(r[4].data||[])){if(!agendaItems[a.session_id])agendaItems[a.session_id]=[];agendaItems[a.session_id].push(a);}
-    for(var ac of(r[5].data||[])){if(!mActions[ac.session_id])mActions[ac.session_id]=[];mActions[ac.session_id].push(ac);}
+    for(var s of get(3)){if(!sessions[s.meeting_id])sessions[s.meeting_id]=[];sessions[s.meeting_id].push(s);}
+    for(var a of get(4)){if(!agendaItems[a.session_id])agendaItems[a.session_id]=[];agendaItems[a.session_id].push(a);}
+    for(var ac of get(5)){if(!mActions[ac.session_id])mActions[ac.session_id]=[];mActions[ac.session_id].push(ac);}
     setSyncState('synced');
-  }catch(e){setSyncState('error');console.error('loadData error:',e);}
+  }catch(e){setSyncState('error');console.error('[Load] Unexpected error:',e);}
   render();
   await autoPullRecurring();
 }
