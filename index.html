@@ -846,47 +846,50 @@ async function updateRecurringDay(id,val,field){
   renderRecurring();
   await sb.from('recurring').update(update).eq('id',id).eq('user_id',FIXED_UID);setSyncState('synced');
 }
-function isDueToday(r){
-  if(!r.frequency)return false;
+function isDueToday(r,debug){
+  if(!r.frequency){if(debug)console.log('[Due?]',r.text,'- no frequency');return false;}
   var today=new Date();today.setHours(0,0,0,0);
   var todayDow=today.getDay();
   var todayDom=today.getDate();
+  if(debug)console.log('[Due?]',r.text,'freq:',r.frequency,'last_pulled:',r.last_pulled,'day_of_week:',r.day_of_week,'todayDow:',todayDow,'todayDom:',todayDom);
   if(r.frequency==='daily'){
-    if(!r.last_pulled)return true;
+    if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled)');return true;}
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
-    return Math.round((today-last)/(1000*60*60*24))>=1;
+    var diff=Math.round((today-last)/(1000*60*60*24));
+    if(debug)console.log('[Due?] daily diff days:',diff);
+    return diff>=1;
   }
   if(r.frequency==='weekly'){
     var targetDow=r.day_of_week!=null?r.day_of_week:1;
-    if(todayDow!==targetDow)return false;
-    if(!r.last_pulled)return true;
+    if(todayDow!==targetDow){if(debug)console.log('[Due?] -> NO wrong day, need:',targetDow,'got:',todayDow);return false;}
+    if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled)');return true;}
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
-    return Math.round((today-last)/(1000*60*60*24))>=7;
+    var diff=Math.round((today-last)/(1000*60*60*24));
+    if(debug)console.log('[Due?] weekly diff days:',diff);
+    return diff>=7;
   }
   if(r.frequency==='fortnightly'){
     var targetDow=r.day_of_week!=null?r.day_of_week:1;
-    if(todayDow!==targetDow)return false;
-    // Use start_date to calculate which weeks are "on" weeks
+    if(todayDow!==targetDow){if(debug)console.log('[Due?] -> NO wrong day');return false;}
     var anchor=r.start_date?new Date(r.start_date+'T00:00:00'):null;
     if(!anchor){
-      // No start date — fall back to last_pulled check
-      if(!r.last_pulled)return true;
+      if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled, no anchor)');return true;}
       var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
       return Math.round((today-last)/(1000*60*60*24))>=14;
     }
     anchor.setHours(0,0,0,0);
     var diffDays=Math.round((today-anchor)/(1000*60*60*24));
-    if(diffDays<0)return false; // before start date
     var isOnWeek=(Math.floor(diffDays/7)%2===0);
-    if(!isOnWeek)return false;
+    if(debug)console.log('[Due?] fortnightly diffDays:',diffDays,'isOnWeek:',isOnWeek);
+    if(diffDays<0||!isOnWeek)return false;
     if(!r.last_pulled)return true;
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
     return Math.round((today-last)/(1000*60*60*24))>=14;
   }
   if(r.frequency==='monthly'){
     var targetDom=r.month_day||1;
-    if(todayDom!==targetDom)return false;
-    if(!r.last_pulled)return true;
+    if(todayDom!==targetDom){if(debug)console.log('[Due?] -> NO wrong day of month, need:',targetDom,'got:',todayDom);return false;}
+    if(!r.last_pulled){if(debug)console.log('[Due?] -> YES (never pulled)');return true;}
     var last=new Date(r.last_pulled+'T00:00:00');last.setHours(0,0,0,0);
     return Math.round((today-last)/(1000*60*60*24))>=28;
   }
@@ -894,7 +897,7 @@ function isDueToday(r){
 }
 async function autoPullRecurring(){
   var today=new Date().toISOString().split('T')[0];
-  var due=recurring.filter(function(r){return isDueToday(r);});
+  var due=recurring.filter(function(r){return isDueToday(r,true);});
   console.log('[AutoPull] Checking',recurring.length,'recurring tasks. Due today:',due.length, due.map(function(r){return r.text;}));
   for(var r of due){
     var alreadyToday=tasks.some(function(t){return t.bucket==='today'&&t.text===r.text;});
@@ -924,7 +927,7 @@ function renderRecurring(){
   var dowNames={0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
   var ordinal=function(n){return n+(n===1?'st':n===2?'nd':n===3?'rd':'th');};
   el.innerHTML=recurring.map(function(r){
-    var due=isDueToday(r);
+    var due=isDueToday(r,false);
     var typeTag=r.task_type?'<span class="task-tag '+typeClasses[r.task_type]+'">'+typeLabels[r.task_type]+'</span>':'';
     var schedLabel='';
     if(r.frequency==='daily')schedLabel='Every day';
