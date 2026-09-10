@@ -669,24 +669,37 @@ async function deleteCustomList(id){
   renderCustomTabs();renderCustomPanes();
   switchTab('today');
 }
+function renderCustomItemList(listId){
+  var el=document.getElementById('ci-list-'+listId);
+  if(!el)return;
+  var items=customItems[listId]||[];
+  if(!items.length){el.innerHTML='<div class="empty-state">No items yet</div>';return;}
+  el.innerHTML=items.map(function(item){
+    return '<div class="task-item'+(item.done?' done':'')+'">'
+      +'<div class="task-check'+(item.done?' checked':'')+'" onclick="toggleCustomItem(\''+item.id+'\',\''+listId+'\')"></div>'
+      +'<span class="task-text">'+esc(item.text)+'</span>'
+      +'<div class="task-actions"><button class="task-btn danger" onclick="deleteCustomItem(\''+item.id+'\',\''+listId+'\')">x</button></div>'
+      +'</div>';
+  }).join('');
+}
 async function addCustomItem(listId){
   var input=document.getElementById('ci-input-'+listId);
   var text=input.value.trim();if(!text)return;input.value='';
   var tmp='tmp_'+Date.now();
   if(!customItems[listId])customItems[listId]=[];
   customItems[listId].push({id:tmp,list_id:listId,text:text,done:false});
-  renderCustomPanes();
+  renderCustomItemList(listId);
   var res=await sb.from('custom_items').insert({user_id:FIXED_UID,list_id:listId,text:text,done:false}).select().single();
-  if(res.data){customItems[listId]=customItems[listId].filter(function(i){return i.id!==tmp;});customItems[listId].push(res.data);renderCustomPanes();}
+  if(res.data){customItems[listId]=customItems[listId].filter(function(i){return i.id!==tmp;});customItems[listId].push(res.data);renderCustomItemList(listId);}
 }
 async function toggleCustomItem(id,listId){
   var item=(customItems[listId]||[]).find(function(i){return i.id===id;});if(!item)return;
-  item.done=!item.done;renderCustomPanes();
+  item.done=!item.done;renderCustomItemList(listId);
   await sb.from('custom_items').update({done:item.done}).eq('id',id).eq('user_id',FIXED_UID);
 }
 async function deleteCustomItem(id,listId){
   customItems[listId]=(customItems[listId]||[]).filter(function(i){return i.id!==id;});
-  renderCustomPanes();
+  renderCustomItemList(listId);
   await sb.from('custom_items').delete().eq('id',id).eq('user_id',FIXED_UID);
 }
 function renderCustomTabs(){
@@ -720,7 +733,7 @@ function renderCustomPanes(){
       +'<button class="hdr-btn" style="color:var(--red);border-color:var(--red)" onclick="deleteCustomList(\''+l.id+'\')">Delete list</button>'
       +'</div>'
       +'<div class="section">'
-      +'<div class="task-list">'+itemsHtml+'</div>'
+      +'<div class="task-list" id="ci-list-'+l.id+'">'+itemsHtml+'</div>'
       +'<div class="add-area">'
       +'<input class="add-input" id="ci-input-'+l.id+'" placeholder="Add an item..." onkeydown="if(event.key===\'Enter\'){event.preventDefault();addCustomItem(\''+l.id+'\');}">'
       +'<button class="add-btn" onclick="addCustomItem(\''+l.id+'\')">+ Add</button>'
