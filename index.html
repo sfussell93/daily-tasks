@@ -256,7 +256,7 @@
           <div class="section">
             <div class="task-list" id="todayList"></div>
             <div class="add-area">
-              <input class="add-input" id="todayInput" placeholder="Add a task for today..." onkeydown="if(event.key==='Enter')addTask('today')">
+              <input class="add-input" id="todayInput" placeholder="Add a task for today..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTask('today');}">
               <select class="type-select" id="todayType">
                 <option value="">Type...</option>
                 <option value="meeting">Meeting</option>
@@ -275,7 +275,7 @@
           <div class="section">
             <div class="task-list" id="newList"></div>
             <div class="add-area">
-              <input class="add-input" id="newInput" placeholder="Something that came up today..." onkeydown="if(event.key==='Enter')addTask('new')">
+              <input class="add-input" id="newInput" placeholder="Something that came up today..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTask('new');}">
               <label class="conf-label"><input type="checkbox" id="newConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('new')">+ Add</button>
             </div>
@@ -294,7 +294,7 @@
           <div class="section">
             <div class="task-list" id="tomorrowList"></div>
             <div class="add-area">
-              <input class="add-input" id="tomorrowInput" placeholder="Plan a task for tomorrow..." onkeydown="if(event.key==='Enter')addTask('tomorrow')">
+              <input class="add-input" id="tomorrowInput" placeholder="Plan a task for tomorrow..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTask('tomorrow');}">
               <select class="type-select" id="tomorrowType">
                 <option value="">Type...</option>
                 <option value="meeting">Meeting</option>
@@ -316,7 +316,7 @@
           <div class="section">
             <div class="task-list" id="recurringList"></div>
             <div class="add-area" style="margin-top:12px;flex-wrap:wrap">
-              <input class="add-input" id="recurringInput" placeholder="Add a task to your ongoing list..." onkeydown="if(event.key==='Enter')addRecurring()">
+              <input class="add-input" id="recurringInput" placeholder="Add a task to your ongoing list..." onkeydown="if(event.key==='Enter'){event.preventDefault();addRecurring();}">
               <select class="type-select" id="recurringType">
                 <option value="">Type...</option>
                 <option value="meeting">Meeting</option>
@@ -367,7 +367,7 @@
           <div class="section">
             <div class="task-list" id="backlogList"></div>
             <div class="add-area">
-              <input class="add-input" id="backlogInput" placeholder="Something to remember but not urgent..." onkeydown="if(event.key==='Enter')addTask('backlog')">
+              <input class="add-input" id="backlogInput" placeholder="Something to remember but not urgent..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTask('backlog');}">
               <label class="conf-label"><input type="checkbox" id="backlogConf"> &#128274;</label>
               <button class="add-btn" onclick="addTask('backlog')">+ Add</button>
             </div>
@@ -383,7 +383,7 @@
           <div class="section">
             <div class="task-list" id="techgoalList"></div>
             <div class="add-area" style="margin-top:12px;flex-wrap:wrap">
-              <input class="add-input" id="techgoalInput" placeholder="Add a tech goal..." onkeydown="if(event.key==='Enter')addTechGoal()">
+              <input class="add-input" id="techgoalInput" placeholder="Add a tech goal..." onkeydown="if(event.key==='Enter'){event.preventDefault();addTechGoal();}">
               <input class="tg-date-input" id="techgoalDate" type="date" title="Due date (optional)">
               <button class="add-btn" style="background:var(--techgoal)" onclick="addTechGoal()">+ Add</button>
             </div>
@@ -722,7 +722,7 @@ function renderCustomPanes(){
       +'<div class="section">'
       +'<div class="task-list">'+itemsHtml+'</div>'
       +'<div class="add-area">'
-      +'<input class="add-input" id="ci-input-'+l.id+'" placeholder="Add an item..." onkeydown="if(event.key===\'Enter\')addCustomItem(\''+l.id+'\')">'
+      +'<input class="add-input" id="ci-input-'+l.id+'" placeholder="Add an item..." onkeydown="if(event.key===\'Enter\'){event.preventDefault();addCustomItem(\''+l.id+'\');}">'
       +'<button class="add-btn" onclick="addCustomItem(\''+l.id+'\')">+ Add</button>'
       +'</div>'
       +'</div>'
